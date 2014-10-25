@@ -13,15 +13,23 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 class SQL {
-	private $Connection;
+	private $Connection = null;
 
 	public function __construct($Host, $Username, $Password, $Database) {
 		$this->Connection = mysqli_connect($Host, $Username, $Password, $Database);
 		if(mysqli_connect_errno()) 
             die('MySQL Connection Error '.mysqli_connect_errno().': '.mysqli_connect_error());
 	}
+	public function __destruct() {
+		$this->Close();
+	}
 	public function Close() {
-		return mysqli_close($this->Connection);	
+		if($this->Connection != null) {
+            mysqli_close($this->Connection);
+            $this->Connection = null;
+            return true;
+        } else
+            return false;
 	}
 	public function Error() {
         die('MySQL Error: '.mysqli_error($this->Connection));
@@ -32,15 +40,14 @@ class SQL {
 	public function Escape($Escape_String) {
 		if(get_magic_quotes_gpc())
 			$Escape_String = stripslashes($Escape_String);
-		return mysqli_real_escape_string($this->Connection,$Escape_String);
+		return mysqli_real_escape_string($this->Connection, $Escape_String);
 	}
 	public function Query($Query_String) {
 		$SQL_Query = @mysqli_query($this->Connection, $Query_String) or $this->Error();
 		return $SQL_Query;
 	}
 	public function Query_InsertID($Query_String) {
-		$Q = $this->Query($Query_String);
-        $this->Free($Q);
+		$this->Query($Query_String);
 		return mysqli_insert_id($this->Connection);
 	}
 	public function InsertID() {
@@ -50,7 +57,7 @@ class SQL {
 		$Q = $this->Query($Query_String);
         $Rows = mysqli_num_rows($Q);
         $this->Free($Q);
-		return mysqli_num_rows($Rows);
+		return $Rows;
 	}
 	public function Rows($Query) {
 		return mysqli_num_rows($Query);

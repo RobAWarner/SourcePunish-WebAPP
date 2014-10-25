@@ -12,10 +12,19 @@
 | http://www.gnu.org/licenses/agpl-3.0.html               |
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
+/* TODO:
+    - Better integration with sm_admins DB, can use new steamid? look at groups?
+    - Validate admin sql settings in core if needed
+    - Create & code for admin table where not using sm_admins
+*/
 class Auth {
     private $OpenIDURL = 'https://steamcommunity.com/openid/login';
+    private $User64 = null;
+    private $UserAdmin = false;
+    private $UserAdminFlags = array();
 
     public function GetLoginURL() {
+        PrintDebug('Called Auth->GetLoginURL');
         $OpenIDParams = array(
             'openid.ns' => 'http://specs.openid.net/auth/2.0',
             'openid.mode' => 'checkid_setup',
@@ -27,6 +36,7 @@ class Auth {
         return $this->OpenIDURL.'?'.http_build_query($OpenIDParams, '', '&amp;');
     }
     public function ValidateLogin() {
+        PrintDebug('Called Auth->ValidateLogin');
         $OpenIDParams = array(
             'openid.assoc_handle' => $_GET['openid_assoc_handle'],
             'openid.signed' => $_GET['openid_signed'],
@@ -55,21 +65,108 @@ class Auth {
         if($GetResponse === false)
             return false;
         if(preg_match('#^http://steamcommunity.com/openid/id/([0-9]{17,20})#', $_GET['openid_claimed_id'], $Matches)) {
-            if(count($Matches) == 2)
-                return preg_match('/is_valid\s*:\s*true/i', $GetResponse) == 1?$Matches[1]:'';
+            if(count($Matches) == 2 && preg_match('/is_valid\s*:\s*true/i', $GetResponse) == 1) {
+                return $Matches[1];
+            }
         }
         return false;
     }
-    public function ValidateSession($SQL) {
-        if(isset($_COOKIE['SP_SESSION_ID']) && $_COOKIE['SP_SESSION_ID'] != '') {
-            // Check session id & time with database
+    public function SetSession($Steam64) {
+        PrintDebug('Called Auth->SetSession');
+        $Time = time();
+        $SessionID = sha1($Steam64.':'.$Time.':'.USER_ADDRESS);
+        $SessionID = $GLOBALS['sql']->Escape($SessionID);
+        $Steam64 = $GLOBALS['sql']->Escape($Steam64);
+        $UserIP = $GLOBALS['sql']->Escape(USER_ADDRESS);
+        if($GLOBALS['sql']->Query_Rows('SELECT session_id FROM '.SQL_PREFIX.'sessions WHERE session_user=\''.$Steam64.'\' LIMIT 1') == 1)
+            $GLOBALS['sql']->Query('UPDATE '.SQL_PREFIX.'sessions SET session_id=\''.$SessionID.'\', session_time=\''.$Time.'\', session_user_ip=\''.$UserIP.'\' WHERE session_user=\''.$Steam64.'\' LIMIT 1');
+        else
+            $GLOBALS['sql']->Query('INSERT INTO '.SQL_PREFIX.'sessions (session_id, session_user, session_user_ip, session_time) VALUES (\''.$SessionID.'\', \''.$Steam64.'\', \''.$UserIP.'\', \''.$Time.'\')');
+        setcookie('SP_SESSION_ID', $SessionID, 0);
+        return true;
+    }
+    public function ValidateSession() {
+        PrintDebug('Called Auth->ValidateSession');
+        if(isset($_COOKIE['SP_SESSION_ID']) && strlen($_COOKIE['SP_SESSION_ID']) == 40) {
+            $SessionID = $GLOBALS['sql']->Escape($_COOKIE['SP_SESSION_ID']);
+            $SessionQuery = $GLOBALS['sql']->Query('SELECT session_user, session_user_ip FROM '.SQL_PREFIX.'sessions WHERE session_id=\''.$SessionID.'\' LIMIT 1');
+            if($GLOBALS['sql']->Rows($SessionQuery) == 1) {
+                $SessionArray = $GLOBALS['sql']->FetchArray($SessionQuery);
+                if(USER_ADDRESS == $SessionArray['session_user_ip']) {
+                    $this->User64 = $SessionArray['session_user'];
+                    $this->CheckAdmin();
+                    $GLOBALS['sql']->Free($SessionQuery);
+                    return true;
+                } else
+                    $this->EndSession();
+            }
+            $GLOBALS['sql']->Free($SessionQuery);
         }
         return false;
     }
-    public function SetCookie() {
-    
+    public function EndSession() {
+        PrintDebug('Called Auth->EndSession');
+        setcookie('SP_SESSION_ID', '', time()-3600);
+        /* Should we redirect ? */
     }
-    public function SetSession() {
-        
+    private function CheckAdmin($Steam64 = null) {
+        PrintDebug('Called Auth->CheckAdmin');
+        if($Steam64 == null && $this->User64 == null)
+            return false;
+        if($Steam64 == null && $this->User64 != null)
+            $Steam64 = $this->User64;
+        $AdminArray = array();
+        if($GLOBALS['config']['admins']['useexisting'] == true) {
+            if(!$GLOBALS['config']['admins']['differentdb']) {
+                $AdminTable = $GLOBALS['sql']->Escape($GLOBALS['config']['admins']['table']);
+                $SteamID = $GLOBALS['steam']->Steam64ToID($Steam64);
+                if($SteamID !== false) {
+                    $SteamID = $GLOBALS['sql']->Escape($SteamID);
+                    $AdminQuery = $GLOBALS['sql']->Query('SELECT flags FROM '.$AdminTable.' WHERE authtype=\'steam\' AND identity=\''.$SteamID.'\' LIMIT 1');
+                    if($GLOBALS['sql']->Rows($AdminQuery) == 1)
+                        $AdminArray = $GLOBALS['sql']->FetchArray($AdminQuery);
+                    $GLOBALS['sql']->Free($AdminQuery);
+                }
+            } else {
+                $AdminSQL = new SQL($GLOBALS['config']['admins']['host'], $GLOBALS['config']['admins']['username'], $GLOBALS['config']['admins']['password'], $GLOBALS['config']['admins']['database']);
+                $AdminTable = $AdminSQL->Escape($GLOBALS['config']['admins']['table']);
+                $SteamID = $AdminSQL->Steam64ToID($Steam64);
+                if($SteamID !== false) {
+                    $SteamID = $AdminSQL->Escape($SteamID);
+                    $AdminQuery = $AdminSQL->Query('SELECT flags FROM '.$AdminTable.' WHERE authtype=\'steam\' AND identity=\''.$SteamID.'\' LIMIT 1');
+                    if($AdminSQL->Rows($AdminQuery) == 1)
+                        $AdminArray = $AdminSQL->FetchArray($AdminQuery);
+                    $AdminSQL->Free($AdminQuery);
+                }
+                $AdminSQL->Close();
+            }
+        } else {
+            /* Use built-in DB */
+            /* TODO Add */
+        }
+        if(!empty($AdminArray)) {
+            $this->UserAdmin = true;
+            $this->UserAdminFlags = str_split($AdminArray['flags']);
+            return true;
+        }
+        return false;
+    }
+    public function HasAdminFlag($Flag) {
+        PrintDebug('Called Auth->AdminHasFlag');
+        if(in_array('z', $this->UserAdminFlags) || in_array($Flag, $this->UserAdminFlags))
+            return true;
+        else
+            return false;
+    }
+    public function IsLoggedIn() {
+        PrintDebug('Called Auth->IsLoggedIn');
+        if($this->User64 != null)
+            return $this->User64;
+        else
+            return false;
+    }
+    public function IsAdmin() {
+        PrintDebug('Called Auth->IsAdmin');
+        return $this->UserAdmin;
     }
 }
