@@ -1,10 +1,7 @@
 <?php
     require_once('includes/core.php');
-    require_once(DIR_INCLUDE.'class.sql.php');
     require_once(DIR_INCLUDE.'class.steam.php');
-    require_once(DIR_INCLUDE.'class.auth.php');
     $GLOBALS['steam'] = new Steam();
-    $GLOBALS['auth'] = new Auth();
 ?>
 <!DOCTYPE html>
 <html>

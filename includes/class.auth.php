@@ -28,8 +28,8 @@ class Auth {
         $OpenIDParams = array(
             'openid.ns' => 'http://specs.openid.net/auth/2.0',
             'openid.mode' => 'checkid_setup',
-            'openid.return_to' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!='off')?'https':'http'.'://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'],
-            'openid.realm' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!='off')?'https':'http'.'://'.$_SERVER['HTTP_HOST'],
+            'openid.return_to' => (IsSSL()?'https':'http').'://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'],
+            'openid.realm' => (IsSSL()?'https':'http').'://'.$_SERVER['HTTP_HOST'],
             'openid.identity' => 'http://specs.openid.net/auth/2.0/identifier_select',
             'openid.claimed_id'	=> 'http://specs.openid.net/auth/2.0/identifier_select',
         );
@@ -82,7 +82,7 @@ class Auth {
             $GLOBALS['sql']->Query('UPDATE '.SQL_PREFIX.'sessions SET session_id=\''.$SessionID.'\', session_time=\''.$Time.'\', session_user_ip=\''.$UserIP.'\' WHERE session_user=\''.$Steam64.'\' LIMIT 1');
         else
             $GLOBALS['sql']->Query('INSERT INTO '.SQL_PREFIX.'sessions (session_id, session_user, session_user_ip, session_time) VALUES (\''.$SessionID.'\', \''.$Steam64.'\', \''.$UserIP.'\', \''.$Time.'\')');
-        setcookie('SP_SESSION_ID', $SessionID, 0);
+        setcookie('SP_SESSION_ID', $SessionID, (int)$GLOBALS['settings']['site_session_timeout']);
         return true;
     }
     public function ValidateSession() {
@@ -158,8 +158,8 @@ class Auth {
         else
             return false;
     }
-    public function IsLoggedIn() {
-        PrintDebug('Called Auth->IsLoggedIn');
+    public function GetUser64() {
+        PrintDebug('Called Auth->GetUser64');
         if($this->User64 != null)
             return $this->User64;
         else

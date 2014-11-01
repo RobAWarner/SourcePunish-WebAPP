@@ -14,7 +14,6 @@
 if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 
 /* *TODO*
-    - Check user session
     - Add system to allow banning users from logging in
     - Custom error reporting
     - Translations
@@ -39,6 +38,17 @@ define('DATE_FORMAT', 'H:i jS F Y');
 define('DIR_ROOT',    dirname(dirname(__FILE__)).'/');
 define('DIR_INCLUDE', DIR_ROOT.'includes/');
 define('DIR_THEMES',  DIR_ROOT.'themes/');
+$HTMLROOT = dirname($_SERVER['REQUEST_URI']);
+$HTMLROOT = str_replace('\\', '/', $HTMLROOT);
+if(substr($HTMLROOT, -1, 1) != '/')
+    $HTMLROOT .= '/';
+if($HTMLROOT == '.')
+    $HTMLROOT = '/';
+define('HTML_ROOT', $HTMLROOT);
+unset($HTMLROOT);
+define('HTML_IMAGES', HTML_ROOT.'static/images/');
+define('HTML_SCRIPTS', HTML_ROOT.'static/scripts/');
+define('HTML_CSS', HTML_ROOT.'static/css/');
 
 /* Get the best IP address for the user */
 $IPAddress = '';
@@ -83,8 +93,66 @@ PrintDebug('SQL Connected');
 define('SQL_PREFIX', $GLOBALS['sql']->Escape($GLOBALS['config']['sql']['prefix']));
 unset($GLOBALS['config']['sql']);
 
+/* Load settings */
+$GLOBALS['settings'] = array();
+$SettingsQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PREFIX.'settings');
+while($Row = $GLOBALS['sql']->FetchArray($SettingsQuery)) {
+    $GLOBALS['settings'][$Row['setting_name']] = $Row['setting_value'];
+    switch($Row['setting_value']) {
+        case 'true': $GLOBALS['settings'][$Row['setting_name']] = true; break;
+        case 'false': $GLOBALS['settings'][$Row['setting_name']] = false; break;
+    }
+}
+$GLOBALS['sql']->Free($SettingsQuery);
+PrintDebug('Settings Loaded');
+
+/* Steam */
+require_once(DIR_INCLUDE.'class.steam.php');
+$GLOBALS['steam'] = new Steam();
+PrintDebug('Steam Class Loaded');
+
+/* Session/Auth */
+require_once(DIR_INCLUDE.'class.auth.php');
+$GLOBALS['auth'] = new Auth();
+$IsValidSession = $GLOBALS['auth']->ValidateSession();
+if($IsValidSession) {
+    if($GLOBALS['auth']->IsAdmin()) {
+        define('USER_ADMIN', true);
+        if($GLOBALS['auth']->HasAdminFlag($GLOBALS['settings']['superadmin_flag']))
+            define('USER_SUPERADMIN', true);
+    }
+    define('USER_LOGGEDIN', true);
+}
+if(!defined('USER_ADMIN')) define('USER_ADMIN', false);
+if(!defined('USER_SUPERADMIN')) define('USER_SUPERADMIN', false);
+if(!defined('USER_LOGGEDIN')) define('USER_LOGGEDIN', false);
+PrintDebug('Auth Class Loaded & Checked');
+
+/* Theming */
+$ThemeName = $GLOBALS['settings']['site_theme'];
+if(!file_exists(DIR_THEMES.$ThemeName.'/theme.php')) {
+    /* Log as an error ? */
+    if(!file_exists(DIR_THEMES.'SourcePunish/theme.php'))
+        die("ERROR! Cannot find user or default theme file.");
+    else
+        $ThemeName = 'SourcePunish';
+}
+define('THEME_CURRENT', $ThemeName); 
+unset($ThemeName);
+define('THEME_PATH', DIR_THEMES.THEME_CURRENT.'/');
+define('HTML_THEME_PATH', HTML_ROOT.'themes/'.THEME_CURRENT.'/');
+
+require_once(DIR_INCLUDE.'class.theming.php');
 
 /* Functions */
+function IsSSL() {
+    if(isset($_SERVER['HTTPS']) && (strtolower($_SERVER['HTTPS']) == 'on' || $_SERVER['HTTPS'] == '1')) {
+        return true;
+    } else if(isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == '443') {
+        return true;
+    }
+    return false;
+}
 function IsValidIP($IPAddress, $Type = 'both') {
     if($Type == 'ipv4' || $Type == 'both') {
         if(preg_match('/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/', $IPAddress))
@@ -96,5 +164,4 @@ function IsValidIP($IPAddress, $Type = 'both') {
     }
     return false;
 }
-
 ?>
