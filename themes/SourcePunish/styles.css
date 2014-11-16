@@ -119,8 +119,14 @@ body {
 #nav-user ul li {
     border-left: 1px solid #000;
 }
+#nav-user ul li ul li {
+    border-left: none;
+}
 #nav-main ul li {
     border-right: 1px solid #000;
+}
+#nav-main ul li ul li {
+    border-right: none;
 }
 #nav-user ul li a, #nav-main ul li a {
     font-weight: bold;
@@ -189,6 +195,30 @@ tbody tr:hover {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+}
+
+/* Pagination */
+.pagination {
+    margin-top: 15px;
+	display: block; 
+    margin-bottom: 10px;
+    text-align: center;
+}
+.pagination-container {
+    height: 100%;
+    display: inline-block;
+    border-right: 1px #DDD solid;
+    border-top: 1px #DDD solid;
+    border-bottom: 1px #DDD solid;
+}
+.pagination-container span,
+.pagination-container a {
+    padding: 6px;
+    display: inline-block;
+    border-left: 1px #DDD solid;
+}
+.pagination-container .disabled {
+    cursor: not-allowed !important;
 }
 
 #footer {

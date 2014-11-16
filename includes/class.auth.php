@@ -24,7 +24,7 @@ class Auth {
     private $UserAdminFlags = array();
 
     public function GetLoginURL() {
-        PrintDebug('Called Auth->GetLoginURL');
+        PrintDebug('Called Auth->GetLoginURL', 2);
         $OpenIDParams = array(
             'openid.ns' => 'http://specs.openid.net/auth/2.0',
             'openid.mode' => 'checkid_setup',
@@ -36,7 +36,7 @@ class Auth {
         return $this->OpenIDURL.'?'.http_build_query($OpenIDParams, '', '&amp;');
     }
     public function ValidateLogin() {
-        PrintDebug('Called Auth->ValidateLogin');
+        PrintDebug('Called Auth->ValidateLogin', 2);
         $OpenIDParams = array(
             'openid.assoc_handle' => $_GET['openid_assoc_handle'],
             'openid.signed' => $_GET['openid_signed'],
@@ -72,7 +72,7 @@ class Auth {
         return false;
     }
     public function SetSession($Steam64) {
-        PrintDebug('Called Auth->SetSession');
+        PrintDebug('Called Auth->SetSession with \''.$Steam64.'\'', 2);
         $Time = time();
         $SessionID = sha1($Steam64.':'.$Time.':'.USER_ADDRESS);
         $SessionID = $GLOBALS['sql']->Escape($SessionID);
@@ -86,7 +86,7 @@ class Auth {
         return true;
     }
     public function ValidateSession() {
-        PrintDebug('Called Auth->ValidateSession');
+        PrintDebug('Called Auth->ValidateSession', 2);
         if(isset($_COOKIE['SP_SESSION_ID']) && strlen($_COOKIE['SP_SESSION_ID']) == 40) {
             $SessionID = $GLOBALS['sql']->Escape($_COOKIE['SP_SESSION_ID']);
             $SessionQuery = $GLOBALS['sql']->Query('SELECT session_user, session_user_ip FROM '.SQL_PREFIX.'sessions WHERE session_id=\''.$SessionID.'\' LIMIT 1');
@@ -105,12 +105,12 @@ class Auth {
         return false;
     }
     public function EndSession() {
-        PrintDebug('Called Auth->EndSession');
+        PrintDebug('Called Auth->EndSession', 2);
         setcookie('SP_SESSION_ID', '', time()-3600);
         /* Should we redirect ? */
     }
     private function CheckAdmin($Steam64 = null) {
-        PrintDebug('Called Auth->CheckAdmin');
+        PrintDebug('Called Auth->CheckAdmin with \''.$Steam64.'\'', 2);
         if($Steam64 == null && $this->User64 == null)
             return false;
         if($Steam64 == null && $this->User64 != null)
@@ -152,21 +152,30 @@ class Auth {
         return false;
     }
     public function HasAdminFlag($Flag) {
-        PrintDebug('Called Auth->AdminHasFlag');
-        if(in_array('z', $this->UserAdminFlags) || in_array($Flag, $this->UserAdminFlags))
-            return true;
-        else
+        PrintDebug('Called Auth->AdminHasFlag with \''.$Flag.'\'', 2);
+        if(strlen($Flag) > 1) {
+            $Flags = str_split($Flag);
+            foreach($Flags as $LoopFlag) {
+                if($this->HasAdminFlag($LoopFlag))
+                    return true;
+            }
             return false;
+        } else {
+            if(in_array('z', $this->UserAdminFlags) || in_array($Flag, $this->UserAdminFlags))
+                return true;
+            else
+                return false;
+        }
     }
     public function GetUser64() {
-        PrintDebug('Called Auth->GetUser64');
+        PrintDebug('Called Auth->GetUser64', 2);
         if($this->User64 != null)
             return $this->User64;
         else
             return false;
     }
     public function IsAdmin() {
-        PrintDebug('Called Auth->IsAdmin');
+        PrintDebug('Called Auth->IsAdmin', 2);
         return $this->UserAdmin;
     }
 }

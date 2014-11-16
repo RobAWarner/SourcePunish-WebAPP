@@ -19,12 +19,15 @@ class Steam {
     public $ProfilesURL = 'https://steamcommunity.com/profiles/';
 
     public function Valid64($Steam64) {
+        PrintDebug('Called Steam->Valid64 with \''.$Steam64.'\'', 2);
         if(preg_match('/^([0-9]{17,19})+$/', $Steam64) && (int)$Steam64 > 76561197960265728 && (int)$Steam64 < 9223372036854775807)
             return true;
         else
             return false;
     }
     public function ValidID($SteamID, $Type = 0) {
+        PrintDebug('Called Steam->ValidID with \''.$SteamID.'\' AND \''.$Type.'\'', 2);
+        /* Should we allow these since they can be assigned to clients? */
         if($SteamID == 'BOT' || $SteamID == 'UNKNOWN' || $SteamID == 'STEAM_ID_PENDING')
             return false;
         if($Type == 0 || $Type == 1) {
@@ -42,6 +45,7 @@ class Steam {
         return false;
     }
     public function Steam64ToID($Steam64, $NewID = false) {
+        PrintDebug('Called Steam->Steam64ToID with \''.$Steam64.'\' AND \''.($NewID?'true':'false').'\'', 2);
         if(!$NewID) {
             $Server = bcsub($Steam64, '76561197960265728') & 1;
             $Auth = (int)bcdiv(bcsub(bcsub($Steam64, '76561197960265728'), $Server), '2');
@@ -59,6 +63,7 @@ class Steam {
         return false;
     }
     public function SteamIDTo64($SteamID) {
+        PrintDebug('Called Steam->SteamIDTo64 with \''.$SteamID.'\'', 2);
         if(preg_match('/^STEAM_[0-5]:([1-8]):([0-9]{1,19})$/i', $SteamID, $Matches)) {
             if(count($Matches) == 3) {
                 $Steam64 = bcmul($Matches[2], '2');

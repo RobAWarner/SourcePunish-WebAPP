@@ -8,7 +8,7 @@ a, .section-content h1  {
 a:hover{
     color: #0001E8;
 }
-#nav-user ul li:hover > a, #nav-main ul li:hover > a, table thead  {
+#nav-user ul li:hover > a, #nav-main ul li:hover > a, table thead, .pagination-container a:hover, .pagination-container a.active  {
     background-color: #0300EF;
     color: #FFF;
 }
@@ -18,3 +18,5 @@ a:hover{
 #header-main{
     background-color: #0300EF;
 }
+.pagination-container a {color: #207AE8; }
+.pagination-container .disabled {color: #103766; }
