@@ -26,15 +26,40 @@ function DefaultTheme_AddContent($Array) {
     $Build .= '</section>'."\n";
     return $Build;
 }
+function DefaultTheme_HeaderStat($Text) {
+    return '<span class="stat">'.$Text.'</span>'."\n";
+}
+function DefaultTheme_NavMenuLink($Array) {
+    return '<a href="'.$Array['url'].'" title="'.$Array['title'].'"'.(isset($Array['target'])?' target="'.$Array['target'].'"':'').'>'.$Array['title'].'</a>';
+}
 function DefaultTheme_NavMenu($Array) {
     $Build = '<ul>'."\n";
     foreach($Array as $NavItem) {
-        $Build .= '<li><a href="'.$NavItem['url'].'" title="'.$NavItem['title'].'"'.(isset($NavItem['target'])?' target="'.$NavItem['target'].'"':'').'>'.$NavItem['title'].'</a>';
+        $Build .= '<li>'.$NavItem['link'];
         if(isset($NavItem['children']))
             $Build .= DefaultTheme_NavMenu($NavItem['children']);
         $Build .= '</li>'."\n";
     }
     $Build .= '</ul>'."\n";
+    return $Build;
+}
+function DefaultTheme_TableCell($Array) {
+    return '<'.(isset($Array['heading'])?'th':'td').(isset($Array['class'])?' class="'.$Array['class'].'"':'').(isset($Array['custom'])?' '.$Array['custom']:'').'>'.$Array['content'].'</'.(isset($Array['heading'])?'th':'td').'>';
+}
+function DefaultTheme_TableRow($Array) {
+    return '<tr'.(isset($Array['class'])?' class="'.$Array['class'].'"':'').(isset($Array['custom'])?' '.$Array['custom']:'').'>'.$Array['content'].'</tr>'."\n";
+}
+function DefaultTheme_Table($Array) {
+    $Build = '<table'.(isset($Array['id'])?' id="'.$Array['id'].'"':'').(isset($Array['class'])?' class="'.$Array['class'].'"':'').'>'."\n";
+    if(isset($Array['headings'])) {
+        $Build .= '<thead>'."\n";
+        $Build .= $Array['headings']."\n";
+        $Build .= '</thead>'."\n";
+    }
+    $Build .= '<tbody>'."\n";
+    $Build .= $Array['rows'];
+    $Build .= '</tbody>'."\n";
+    $Build .= '</table>'."\n";
     return $Build;
 }
 function DefaultTheme_PaginationLink($Array) {
@@ -54,7 +79,7 @@ function DefaultTheme_BuildPage($Array) {
     $Build .= '<div id="wrapper-main">'."\n";
     $Build .= '<header id="header-main">'."\n";
     $Build .= '<div id="top-bar">'."\n";
-    $Build .= '<div id="top-bar-stats">Total punishments on record: 12,105</div>'."\n";
+    $Build .= '<div id="top-bar-stats">'.$Array['stats'].'</div>'."\n";
     $Build .= '<nav id="nav-user" class="notooltip">'."\n";
     $Build .= $Array['usernav'];
     $Build .= '</nav>'."\n";

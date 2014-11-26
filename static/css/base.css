@@ -4,10 +4,25 @@
 .center {
     text-align: center;
 }
+.bold {
+    font-weight: bold;
+}
+.underscore {
+    text-decoration: underline;
+}
+.italic {
+    font-style: italic;
+}
+.strike {
+    text-decoration: line-through;
+}
+.clickable {
+    cursor: pointer;
+}
 
 #tooltip {
 	max-width: 280px;
-	position: fixed;
+	position: absolute;
 	left: 0px;
 	top: 0px;
 	display: none;
@@ -41,7 +56,7 @@
 	box-shadow: 1px 1px 3px 1px rgba(0, 0, 0, 0.3);
 }
 
-table .col-time {
+table .col-date {
     width: 120px;
 }
 table .col-server {

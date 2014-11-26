@@ -45,6 +45,7 @@ body {
     background: -webkit-linear-gradient(to bottom,  rgba(252,252,252,0.02) 0%,rgba(255,255,255,0.95) 100%);
     background: -o-linear-gradient(to bottom,  rgba(252,252,252,0.02) 0%,rgba(255,255,255,0.95) 100%);
     background: linear-gradient(to bottom,  rgba(252,252,252,0.02) 0%,rgba(255,255,255,0.95) 100%);
+    background-repeat: no-repeat;
     background-attachment: fixed;
 }
 #wrapper-main {
@@ -195,6 +196,11 @@ tbody tr:hover {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+}
+
+/* Forms */
+form input[type=text] {
+    border: 1px solid #000;
 }
 
 /* Pagination */

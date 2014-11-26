@@ -1,6 +1,18 @@
 <?php
-/* Site */
-$GLOBALS['trans'][101] = '';
+/*--------------------------------------------------------+
+| SourcePunish WebApp                                     |
+| Copyright (C) https://sourcepunish.net                  |
++---------------------------------------------------------+
+| This program is free software and is released under     |
+| the terms of the GNU Affero General Public License      |
+| version 3 as published by the Free Software Foundation. |
+| You can redistribute it and/or modify it under the      |
+| terms of this license, which is included with this      |
+| software as agpl-3.0.txt or viewable at                 |
+| http://www.gnu.org/licenses/agpl-3.0.html               |
++--------------------------------------------------------*/
+if(!defined('IN_SP')) die('Access Denied!');
+
 /* Navigation Items */
 $GLOBALS['trans'][1001] = 'Home';
 $GLOBALS['trans'][1002] = 'Punishments';
@@ -42,6 +54,25 @@ $GLOBALS['trans'][1135] = 'Remover ID';
 $GLOBALS['trans'][1136] = 'Appeal';
 $GLOBALS['trans'][1137] = 'Edit';
 $GLOBALS['trans'][1138] = 'Search';
+$GLOBALS['trans'][1139] = 'Expired';
+$GLOBALS['trans'][1140] = 'Removed';
+$GLOBALS['trans'][1141] = 'Permanent';
+$GLOBALS['trans'][1142] = 'year';
+$GLOBALS['trans'][1143] = 'years';
+$GLOBALS['trans'][1144] = 'month';
+$GLOBALS['trans'][1145] = 'months';
+$GLOBALS['trans'][1146] = 'week';
+$GLOBALS['trans'][1147] = 'weeks';
+$GLOBALS['trans'][1148] = 'day';
+$GLOBALS['trans'][1149] = 'days';
+$GLOBALS['trans'][1150] = 'hour';
+$GLOBALS['trans'][1151] = 'hours';
+$GLOBALS['trans'][1152] = 'minute';
+$GLOBALS['trans'][1153] = 'minutes';
+$GLOBALS['trans'][1154] = 'second';
+$GLOBALS['trans'][1155] = 'seconds';
+$GLOBALS['trans'][1156] = 'Recent Punishments';
+$GLOBALS['trans'][1157] = 'Punishment List - Page %s / %s';
 /* Servers */
 $GLOBALS['trans'][1200] = 'Mod';
 $GLOBALS['trans'][1201] = 'Server Address';
@@ -53,4 +84,17 @@ $GLOBALS['trans'][1206] = 'Location';
 $GLOBALS['trans'][1207] = 'Time';
 /* Stats */
 $GLOBALS['trans'][1300] = 'Total punishments on record';
+/* System */
+$GLOBALS['trans'][2101] = '';
+$GLOBALS['trans'][2009] = 'Redirecting page to';
+$GLOBALS['trans'][2010] = 'You do not have permission to view this page';
+$GLOBALS['trans'][2011] = 'No punishment records found';
+/* Other */
+$GLOBALS['trans'][3001] = 'Login through Steam OpenID';
+$GLOBALS['trans'][3002] = 'Visit';
+$GLOBALS['trans'][3003] = 'Ago';
+$GLOBALS['trans'][3004] = 'Unknown';
+$GLOBALS['trans'][3005] = 'Web';
+$GLOBALS['trans'][3006] = 'Web console';
+$GLOBALS['trans'][3007] = 'N/A';
 ?>

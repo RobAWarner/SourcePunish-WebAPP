@@ -25,14 +25,16 @@ class Theming {
     private $StylesRaw = '';
     private $Scripts = '';
     private $ScriptsRaw = '';
+    private $Stats = '';
     private $Content = '';
 
+    public function __construct() {
+        $this->Title = htmlspecialchars($GLOBALS['settings']['site_title']);
+    }
     public function AddTitle($Text) {
         PrintDebug('Called Theming->AddTitle', 2);
         if($Text == '')
             return;
-        if($this->Title == '')
-            $this->Title = htmlspecialchars($GLOBALS['settings']['site_title']);
         $this->Title = htmlspecialchars(substr($Text, 0, 20)).' | '.$this->Title;
     }
     public function AddHeader($Content) {
@@ -86,6 +88,14 @@ class Theming {
         return 'Powered by <a title="Visit SourcePunish.net" href="http://SourcePunish.net">'.SP_WEB_NAME.' '.SP_WEB_VERSION.'</a>';
     }
     /* Page theming */
+    public function AddHeaderStat($Text) {
+        if(function_exists('Subtheme_HeaderStat'))
+            $this->Stats .= Subtheme_HeaderStat($Text);
+        else if(function_exists('Theme_HeaderStat'))
+            $this->Stats .= Theme_HeaderStat($Text);
+        else
+            $this->Stats .= DefaultTheme_HeaderStat($Text);
+    }
     private function BuildNavs() {
         PrintDebug('Called Theming->BuildNavs', 2);
         $AuthTypes = 'nav_auth=\'0\'';
@@ -105,12 +115,19 @@ class Theming {
             $NavItem = array('title'=>ParseText($Row['nav_title']),'url'=>ParseURL($Row['nav_url']));
             if($Row['nav_target'] == 1)
                 $NavItem['target'] = '_blank';
-            if($Row['nav_parent'] != 0) {
-                $Navs[$Row['nav_position']][$Row['nav_parent']]['children'][$Row['nav_id']] = $NavItem;
-            } else {
+            if(function_exists('Subtheme_NavMenuLink'))
+                $Link = Subtheme_NavMenuLink($NavItem);
+            else if(function_exists('Theme_NavMenuLink'))
+                $Link = Theme_NavMenuLink($NavItem);
+            else
+                $Link = DefaultTheme_NavMenuLink($NavItem);
+            unset($NavItem);
+            if($Row['nav_parent'] != 0)
+                $Navs[$Row['nav_position']][$Row['nav_parent']]['children'][$Row['nav_id']]['link'] = $Link;
+            else {
                 if(isset($Navs[$Row['nav_position']][$Row['nav_id']]['children']))
-                    $NavItem['children'] = $Navs[$Row['nav_position']][$Row['id']]['children'];
-                $Navs[$Row['nav_position']][$Row['nav_id']] = $NavItem;
+                    $Link['children'] = $Navs[$Row['nav_position']][$Row['id']]['children'];
+                $Navs[$Row['nav_position']][$Row['nav_id']]['link'] = $Link;
             }
         }
         $GLOBALS['sql']->Free($GetNavs);
@@ -134,15 +151,120 @@ class Theming {
         if($Title != '') $Array['title'] = $Title;
         if($Classes != '') $Array['class'] = $Classes;
         if($ID != '') $Array['id'] = $ID;
-        if(function_exists('Subtheme_AddContent')) {
-            $this->Content = Subtheme_AddContent($Array);
-        } else if(function_exists('Theme_AddContent')) {
-            $this->Content = Theme_AddContent($Array);
-        } else {
-            $this->Content = DefaultTheme_AddContent($Array);
-        }
+        if(function_exists('Subtheme_AddContent'))
+            $this->Content .= Subtheme_AddContent($Array);
+        else if(function_exists('Theme_AddContent'))
+            $this->Content .= Theme_AddContent($Array);
+        else
+            $this->Content .= DefaultTheme_AddContent($Array);
     }
-    public function Paginate($TotalPages, $CurrentPage, $PagePrefix, $PageSuffix = "") {
+    public function BuildPunishTable($Rows, $Class = 'table-punish', $ID = '') {
+        $Table = array('headings'=>array(), 'rows'=>array(), 'class'=>$Class, 'id'=>$ID);
+        $Table['headings'] = array(
+            array('content'=>ParseText('#TRANS_1100'), 'class'=>'col-date'),
+            array('content'=>ParseText('#TRANS_1101'), 'class'=>'col-server'),
+            array('content'=>ParseText('#TRANS_1102'), 'class'=>'col-player'),
+            array('content'=>ParseText('#TRANS_1103'), 'class'=>'col-type'),
+            array('content'=>ParseText('#TRANS_1104'), 'class'=>'col-reason'),
+            array('content'=>ParseText('#TRANS_1105'), 'class'=>'col-length')
+        );
+        foreach($Rows as $Row) {
+            $Server = GetServerInfo($Row['Punish_Server_ID']);
+            $ATime = array();
+            $Time = PunishTime($Row['Punish_Length']);
+            if($Row['UnPunish'] == 1)
+                $ATime = array('content'=>$Time.' ('.ParseText('#TRANS_1140').')', 'class'=>'green');
+            else if(($Row['Punish_Time']+($Row['Punish_Length']*60) < time()) && $Row['Punish_Length'] > 0)
+                $ATime = array('content'=>$Time.' ('.ParseText('#TRANS_1139').')', 'class'=>'green');
+            else if($Row['Punish_Length'] == 0 && $Row['Punish_Type'] == 'kick')
+                $ATime = array('content'=>PunishTime(-1), 'class'=>'blue');
+            else if($Row['Punish_Length'] == 0)
+                $ATime = array('content'=>$Time, 'class'=>'red');
+            else
+                $ATime = array('content'=>$Time, 'class'=>'orange');
+            unset($Time);
+            $Table['rows'][] = array('cols'=>array(
+                array('content'=>ucwords(PrintTimeDiff(TimeDiff(time()-$Row['Punish_Time']), 1)).' '.ParseText('#TRANS_3003'), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
+                array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'),
+                array('content'=>htmlspecialchars($Row['Punish_Player_Name'])),
+                array('content'=>htmlspecialchars(ucwords($Row['Punish_Type']))),
+                array('content'=>htmlspecialchars($Row['Punish_Reason'])),
+                $ATime
+            ), 'custom'=>'data-pid="'.$Row['Punish_ID'].'"');
+            unset($ATime);
+        }
+        return $this->BuildTable($Table);
+    }
+    public function BuildTable($Array) {
+        $Build = array();
+        if(isset($Array['id']) && $Array['id'] != '')
+            $Build['id'] = $Array['id'];
+        if(isset($Array['class']) && $Array['class'] != '')
+            $Build['class'] = $Array['class'];
+        if(isset($Array['headings'])) {
+            $Build['headings'] = array('content'=>'');
+            foreach($Array['headings'] as $Key => $Heading) {
+                $Array['headings'][$Key]['heading'] = true;
+            }
+            if(function_exists('Subtheme_TableCell')) {
+                foreach($Array['headings'] as $Heading) {
+                    $Build['headings']['content'] .= Subtheme_TableCell($Heading);
+                }
+            } else if(function_exists('Theme_TableCell')) {
+                foreach($Array['headings'] as $Heading) {
+                    $Build['headings']['content'] .= Theme_TableCell($Heading);
+                }
+            } else {
+                foreach($Array['headings'] as $Heading) {
+                    $Build['headings']['content'] .= DefaultTheme_TableCell($Heading);
+                }
+            }
+        }
+        unset($Array['headings']);
+        if(function_exists('Subtheme_TableRow'))
+            $Build['headings'] = Subtheme_TableRow($Build['headings']);
+        else if(function_exists('Theme_TableRow'))
+            $Build['headings'] = Theme_TableRow($Build['headings']);
+        else
+            $Build['headings'] = DefaultTheme_TableRow($Build['headings']);
+        $Build['rows'] = '';
+        if(isset($Array['rows'])) {
+            foreach($Array['rows'] as $Row) {
+                $Cells = '';
+                if(function_exists('Subtheme_TableCell')) {
+                    foreach($Row['cols'] as $Cell) {
+                        $Cells .= Subtheme_TableCell($Cell);
+                    }
+                } else if(function_exists('Theme_TableCell')) {
+                    foreach($Row['cols'] as $Cell) {
+                        $Cells .= Theme_TableCell($Cell);
+                    }
+                } else {
+                    foreach($Row['cols'] as $Cell) {
+                        $Cells .= DefaultTheme_TableCell($Cell);
+                    }
+                }
+                unset($Row['cols']);
+                $Row['content'] = $Cells;
+                unset($Cells);
+                if(function_exists('Subtheme_TableRow'))
+                    $Build['rows'] .= Subtheme_TableRow($Row);
+                else if(function_exists('Theme_TableRow'))
+                    $Build['rows'] .= Theme_TableRow($Row);
+                else
+                    $Build['rows'] .= DefaultTheme_TableRow($Row);
+            }
+        }
+        unset($Array['rows']);
+        if(function_exists('Subtheme_Table'))
+            $Build = Subtheme_Table($Build);
+        else if(function_exists('Theme_Table'))
+            $Build = Theme_Table($Build);
+        else
+            $Build = DefaultTheme_Table($Build);
+        return $Build;
+    }
+    public function Paginate($TotalPages, $CurrentPage, $PagePrefix, $PageSuffix = '') {
         PrintDebug('Called Theming->Paginate', 2);
         if($TotalPages > 1) {
             $MaxNumbers = 20;
@@ -153,7 +275,7 @@ class Theming {
                     if($i == 1) $Link['class'] .= 'first ';
                     if($i == $CurrentPage) $Link['class'] .= 'active ';
                     if($i == $TotalPages) $Link['class'] .= 'last';
-                    $Links[$i]['class'] = trim($Links[$i]['class']);
+                    $Link['class'] = trim($Link['class']);
                     if($Link['class'] == '') unset($Link['class']);
                     $Links[] = $Link;
 				}
@@ -183,7 +305,7 @@ class Theming {
             $StartLinks[1] = array('url'=>$PagePrefix.($CurrentPage>1?($CurrentPage-1):1).$PageSuffix, 'text'=>'&laquo;Previous', 'class'=>($CurrentPage<=1?'disabled':''));
             array_unshift($Links, $StartLinks[0], $StartLinks[1]);
             unset($StartLinks);
-            $EndLinks[0] = array('url'=>$PagePrefix.($CurrentPage<$TotalPages?($TotalPages+1):$TotalPages).$PageSuffix, 'text'=>'Next&raquo;', 'class'=>($CurrentPage>=$TotalPages?'disabled':''));
+            $EndLinks[0] = array('url'=>$PagePrefix.($CurrentPage<$TotalPages?($CurrentPage+1):$TotalPages).$PageSuffix, 'text'=>'Next&raquo;', 'class'=>($CurrentPage>=$TotalPages?'disabled':''));
             $EndLinks[1] = array('url'=>$PagePrefix.$TotalPages.$PageSuffix, 'text'=>'Last&raquo;&raquo;', 'class'=>($CurrentPage>=$TotalPages?'disabled':''));
             array_push($Links, $EndLinks[0], $EndLinks[1]);
             unset($MaxNumbers);
@@ -202,13 +324,12 @@ class Theming {
                 }
             }
             unset($Links);
-            if(function_exists('Subtheme_Pagination')) {
+            if(function_exists('Subtheme_Pagination')) 
                 $BuildLinks = Subtheme_Pagination($BuildLinks);
-            } else if(function_exists('Theme_Pagination')) {
+            else if(function_exists('Theme_Pagination'))
                 $BuildLinks = Theme_Pagination($BuildLinks);
-            } else {
+            else
                 $BuildLinks = DefaultTheme_Pagination($BuildLinks);
-            }
             return $BuildLinks;
         }
         return false;
@@ -221,16 +342,17 @@ class Theming {
         $Page['mainnav'] = $Navs[0];
         unset($Navs);
         $Page['header'] = $this->BuildHeader();
+        $Page['stats'] = $this->Stats;
+        unset($this->Stats);
         $Page['content'] = $this->Content;
         unset($this->Content);
         $Page['footer'] = $this->BuildFooter();
-        if(function_exists('Subtheme_BuildPage')) {
+        if(function_exists('Subtheme_BuildPage'))
             $Build = Subtheme_BuildPage($Page);
-        } else if(function_exists('Theme_BuildPage')) {
+        else if(function_exists('Theme_BuildPage'))
             $Build = Theme_BuildPage($Page);
-        } else {
+        else
             $Build = DefaultTheme_BuildPage($Page);
-        }
         return $Build;
     }
 }

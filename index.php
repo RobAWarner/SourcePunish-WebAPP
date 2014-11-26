@@ -1,9 +1,62 @@
 <?php
-    require_once('includes/core.php');
-    $GLOBALS['theme']->AddTitle('Test');
-    $TestContent = '<p>Welcome to the our group punishment database, powered by SourcePunish.<br /><br />Here you can view all punishments, view your punishments and appeal punishments you think were placed incorrectly. To do this, simple sign in through Steam.</p>';
-    $GLOBALS['theme']->AddContent('Welcome to SourcePunish', $TestContent, 'testingclass', 'welcome-content');
-    $PageNumbers = $GLOBALS['theme']->Paginate(515, 515, 'index.php?q=punishments&amp;page=');
-    $GLOBALS['theme']->AddContent('Some test block', ParseText('Hello and welcome #TRANS_1102 to the #TRANS_1121 system.').$PageNumbers);
-    echo $GLOBALS['theme']->BuildPage();
+require_once('includes/core.php');
+    
+/* TODO:
+    - Validate custom home page
+*/
+
+/* Get basic stats */
+$TotalPunishments = $GLOBALS['sql']->Query_FetchArray('SELECT count(*) AS prows FROM '.SQL_PUNISHMENTS.'');
+$GLOBALS['varcache']['punishcount'] = $TotalPunishments['prows'];
+unset($TotalPunishments);
+$GLOBALS['theme']->AddHeaderStat(ParseText('#TRANS_1300: '.number_format($GLOBALS['varcache']['punishcount'])));
+
+/* Select Page */
+$PageQuery = isset($_GET['q'])?$_GET['q']:$GLOBALS['settings']['site_index'];
+switch($PageQuery) {
+    case 'index':
+        require_once(DIR_PAGES.'page.home.php');
+    break;
+    case 'punishments':
+        require_once(DIR_PAGES.'page.punishments.php');
+    break;
+    case 'view':
+        require_once(DIR_PAGES.'page.view.php');
+    break;
+    case 'search':
+    case 'searchme':
+        require_once(DIR_PAGES.'page.search.php');
+    break;
+    case 'appeal':
+        require_once(DIR_PAGES.'page.appeal.php');
+    break;
+    case 'servers':
+        require_once(DIR_PAGES.'page.servers.php');
+    break;
+    case 'stats':
+        require_once(DIR_PAGES.'page.statistics.php');
+    break;
+    case 'login':
+    case 'logout':
+        require_once(DIR_PAGES.'page.login.php');
+    break;
+    case 'admin':
+        require_once(DIR_PAGES.'page.admin.php');
+    break;
+    case 'me':
+        require_once(DIR_PAGES.'page.me.php');
+    break;
+    case 'steamid':
+        require_once(DIR_PAGES.'page.steamid.php');
+    break;
+    default:
+        if(CustomPageExists($PageQuery) && $PageQuery != 'home_intro')
+            require_once(DIR_PAGES.'page.custom.php');
+        else
+            Redirect('^');
+    break;
+}
+
+/* Build final page */
+echo $GLOBALS['theme']->BuildPage();
 ?>
