@@ -13,6 +13,10 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
+/* BBCode Test */
+/*$X = ParseText('[center][url=http://cake.com][img]http://monsterprojects.org/images/logo.png[/img][/url][br][s]cake[/s][/center]', true, true);
+echo $X;*/
+
 $Intro = GetCustomPage('home_intro');
 $GLOBALS['theme']->AddContent($Intro['title'], $Intro['content']);
 unset($Intro);

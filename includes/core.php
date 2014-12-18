@@ -17,32 +17,51 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     - Add system to allow banning users from logging in
     - Custom error reporting
     - Translations
-    - Clean code!
+    - Clean code! (With comments?)
+    - Enable/disable PHP errors
+    - Config for time display
+    - Config to overwrite website URL, main page, php path etc
 */
 
-$StartTime = microtime(true);
-$LastTime = $StartTime;
-$StartMem = memory_get_usage();
-$LastMem = $StartMem;
+/* Global Variable to cache some variables */
+$GLOBALS['varcache'] = array();
+
+$GLOBALS['varcache']['debug']['starttime'] = microtime(true);
+$GLOBALS['varcache']['debug']['lasttime'] = $GLOBALS['varcache']['debug']['starttime'];
+$GLOBALS['varcache']['debug']['lastmem'] = memory_get_usage();
 
 define('IN_SP', true);
 define('SP_WEB_VERSION', '0.0.3');
 define('SP_WEB_NAME', 'SourcePunish WebApp');
-date_default_timezone_set('UTC');
+
+/* Set the time zone */
+if(function_exists('date_default_timezone_set'))
+    date_default_timezone_set('UTC');
+else
+    ini_set('date.timezone', 'UTC');
+
+/* Test if the system is running 32bit PHP */
+if(PHP_INT_SIZE == 4)
+    define('IS32BIT', true);
+else
+    define('IS32BIT', false);
 
 /* Show PHP errors for development purposes */
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
+/* Set shutdown function */
 register_shutdown_function('ScriptShutdown');
 
 /* Some definitions */
 define('DATE_FORMAT', 'H:i - jS F Y');
 define('DIR_ROOT',    dirname(dirname(__FILE__)).'/');
 define('DIR_INCLUDE', DIR_ROOT.'includes/');
+define('DIR_CACHE', DIR_ROOT.'data/');
 define('DIR_PAGES', DIR_INCLUDE.'pages/');
 define('DIR_THEMES',  DIR_ROOT.'themes/');
 define('DIR_TRANSLATIONS',  DIR_ROOT.'translations/');
+/* Work out the HTML root */
 $HTMLROOT = dirname($_SERVER['PHP_SELF']);
 $HTMLROOT = str_replace('\\', '/', $HTMLROOT);
 if(substr($HTMLROOT, -1, 1) != '/')
@@ -58,8 +77,10 @@ define('HTML_CSS', HTML_ROOT.'static/css/');
 define('URL_PAGE', 'index.php');
 define('URL_QUERY', '?q=');
 
-/* Global Variable to cache some variables */
-$GLOBALS['varcache'] = array();
+if(isset($_GET['ajax']) && $_GET['ajax'] == '1')
+    define('AJAX', true);
+else
+    define('AJAX', false);
 
 /* Get the best IP address for the user */
 $IPAddress = '';
@@ -84,13 +105,12 @@ if(!isset($GLOBALS['config']))
 
 /* Debugging message function */
 function PrintDebug($Text, $Level = 1) {
-    global $StartTime, $LastTime, $StartMem, $LastMem;
-    if(isset($GLOBALS['config']['system']['printdebug']) && $GLOBALS['config']['system']['printdebug'] > 0 && $Level <= $GLOBALS['config']['system']['printdebug']) {
+    if(!AJAX && isset($GLOBALS['config']['system']['printdebug']) && $GLOBALS['config']['system']['printdebug'] > 0 && $Level <= $GLOBALS['config']['system']['printdebug']) {
         $Time = microtime(true);
         $Mem = memory_get_usage();
-        echo '<!-- DEBUG "'.$Text.'" TIME:'.number_format($Time-$StartTime, 11).'/'.number_format($Time-$LastTime, 11).' |  MEM:'.number_format($Mem).'B/'.number_format($Mem-$LastMem).'B -->'."\n";
-        $LastTime = $Time;
-        $LastMem = $Mem;
+        echo '<!-- DEBUG "'.$Text.'" TIME:'.number_format($Time-$GLOBALS['varcache']['debug']['starttime'], 11).'/'.number_format($Time-$GLOBALS['varcache']['debug']['lasttime'], 11).' |  MEM:'.number_format($Mem).'B/'.number_format($Mem-$GLOBALS['varcache']['debug']['lastmem']).'B -->'."\n";
+        $GLOBALS['varcache']['debug']['lasttime'] = $Time;
+        $GLOBALS['varcache']['debug']['lastmem'] = $Mem;
     }
 }
 PrintDebug('Config Loaded');
@@ -133,12 +153,12 @@ if(isset($GLOBALS['settings']['site_lang']) && $GLOBALS['settings']['site_lang']
     }
 }
 
-/* Steam */
+/* Load & Initiate Steam Class */
 require_once(DIR_INCLUDE.'class.steam.php');
 $GLOBALS['steam'] = new Steam();
 PrintDebug('Steam Class Loaded');
 
-/* Session/Auth */
+/* Load & Initiate Session/Auth Class */
 require_once(DIR_INCLUDE.'class.auth.php');
 $GLOBALS['auth'] = new Auth();
 $IsValidSession = $GLOBALS['auth']->ValidateSession();
@@ -149,13 +169,11 @@ if($IsValidSession) {
             define('USER_SUPERADMIN', true);
     }
     define('USER_LOGGEDIN', true);
-    define('USER_AUTH', $GLOBALS['auth']->GetUser64());
 }
 if(!defined('USER_ADMIN')) define('USER_ADMIN', false);
 if(!defined('USER_SUPERADMIN')) define('USER_SUPERADMIN', false);
 if(!defined('USER_LOGGEDIN')) define('USER_LOGGEDIN', false);
-if(!defined('USER_AUTH')) define('USER_AUTH', false);
-PrintDebug('Auth Class Loaded & Checked as \''.$GLOBALS['auth']->GetUser64().'\'');
+PrintDebug('Auth Class Loaded & Checked as \''.$GLOBALS['auth']->GetUserID().'\'');
 
 /* Theming */
 $ThemeName = $GLOBALS['settings']['site_theme'];
@@ -259,7 +277,7 @@ function Redirect($URL = '') {
     else
         $URL = ParseURL($URL);
     header('Location: '.$URL);
-    die(ParseText('#TRANS_2009').': '.$URL);
+    die(sprintf(ParseText('#TRANS_2009'), $URL));
 }
 function ParseURL($URL) {
     if(substr($URL, 0, 1) == '^') {
@@ -288,8 +306,8 @@ function ParseText($Text, $Trans = true, $BBCode = false, $AllowHTML = false) {
         $Text = preg_replace('#\[br\]#si', '<br />', $Text);
         $Text = preg_replace('#\[center\](.*?)\[/center\]#si', '<div class="center">\1</div>', $Text);
         $Text = preg_replace('#\[img\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)(\.(jpg|jpeg|gif|png))([\r\n]*)\[/img\]#sie', "'<img src=\'\\1\\2'.str_replace(array('?','&amp;','&','='),'','\\3').'\\4\' alt=\'\\1\\2'.str_replace(array('?','&amp;','&','='),'','\\3').'\\4\' />'", $Text);
-        $Text = preg_replace('#\[url\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".ParseText('#TRANS_3002 ')."\\2\\3\" target=\"_blank\" rel=\"nofollow\">\\2\\3</a>'", $Text);
-        $Text = preg_replace('#\[url=([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\](.*?)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".ParseText('#TRANS_3002 ')."\\2\\3\" target=\"_blank\" rel=\"nofollow\">\\5</a>'", $Text);
+        $Text = preg_replace('#\[url\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf(ParseText('#TRANS_3002'), "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\2\\3</a>'", $Text);
+        $Text = preg_replace('#\[url=([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\](.*?)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf(ParseText('#TRANS_3002'), "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\5</a>'", $Text);
     }
     return $Text;
 }
@@ -399,6 +417,12 @@ function TimeDiff($FTime, $Trans = true) {
 function PrintTimeDiff($TimeAgo, $Count = 0, $Trans = true) {
     $TimeString = '';
     $i = 1;
+    if($Count < 0) {
+        if(abs($Count) >= count($TimeAgo))
+            $Count = 1;
+        else
+            $Count = count($TimeAgo) + $Count;
+    }
     foreach($TimeAgo as $STime => $Time) {
         if($Time > 0) {
             if($i > 1)

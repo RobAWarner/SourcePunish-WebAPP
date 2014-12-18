@@ -31,14 +31,14 @@ class Steam {
         if($SteamID == 'BOT' || $SteamID == 'UNKNOWN' || $SteamID == 'STEAM_ID_PENDING')
             return false;
         if($Type == 0 || $Type == 1) {
-            if(preg_match('/^STEAM_[0-5]:([1-8]):([0-9]{1,19})$/i', $SteamID, $Matches)) {
-                if(count($Matches) == 3 && $Matches[2] > 0)
+            if(preg_match('/^STEAM_[0-5]:([0-8]):([0-9]{1,19})$/i', $SteamID, $Matches)) {
+                if(count($Matches) == 3 && (int)$Matches[2] > 0)
                     return true;
             }
         }
         if($Type == 0 || $Type == 2) {
             if(preg_match('/^\[U:1:([0-9]{1,19})\]$/i', $SteamID, $Matches)) {
-                if(count($Matches) == 2 && $Matches[1] > 0)
+                if(count($Matches) == 2 && (int)$Matches[1] > 0)
                     return true;
             }
         }
@@ -48,8 +48,7 @@ class Steam {
         PrintDebug('Called Steam->Steam64ToID with \''.$Steam64.'\' AND \''.($NewID?'true':'false').'\'', 2);
         if(!$NewID) {
             $Server = bcsub($Steam64, '76561197960265728') & 1;
-            $Auth = (int)bcdiv(bcsub(bcsub($Steam64, '76561197960265728'), $Server), '2');
-            $SteamID = 'STEAM_0:'.$Server.':'.$Auth;
+            $SteamID = 'STEAM_0:'.$Server.':'.(int)bcdiv(bcsub(bcsub($Steam64, '76561197960265728'), $Server), '2');
             if($this->ValidID($SteamID, 1))
                 return $SteamID;
         } else {
@@ -64,17 +63,38 @@ class Steam {
     }
     public function SteamIDTo64($SteamID) {
         PrintDebug('Called Steam->SteamIDTo64 with \''.$SteamID.'\'', 2);
-        if(preg_match('/^STEAM_[0-5]:([1-8]):([0-9]{1,19})$/i', $SteamID, $Matches)) {
+        if(preg_match('/^STEAM_[0-5]:([0-8]):([0-9]{1,19})$/i', $SteamID, $Matches)) {
             if(count($Matches) == 3) {
-                $Steam64 = bcmul($Matches[2], '2');
-                $Steam64 = (int)bcadd($Steam64, bcadd('76561197960265728', $Matches[1]));
+                $Steam64 = (string)bcadd(bcmul($Matches[2], '2'), bcadd('76561197960265728', $Matches[1]));
+                if(strpos($Steam64, '.') !== false)
+                    $Steam64 = substr($Steam64, 0, strpos($Steam64, '.'));
                 return $Steam64;
             }
         }
         if(preg_match('/^\[U:1:([0-9]{1,19})\]$/i', $SteamID, $Matches)) {
             if(count($Matches) == 2 && $Matches[1] != 0) {
-                $Steam64 = (int)bcadd('76561197960265728', $Matches[1]);
+                $Steam64 = (string)bcadd('76561197960265728', $Matches[1]);
+                if(strpos($Steam64, '.') !== false)
+                    $Steam64 = substr($Steam64, 0, strpos($Steam64, '.'));
                 return $Steam64;
+            }
+        }
+        return false;
+    }
+    public function SteamIDToID($SteamID) {
+        PrintDebug('Called Steam->SteamIDToID with \''.$SteamID.'\'', 2);
+        if(preg_match('/^STEAM_[0-5]:([0-8]):([0-9]{1,19})$/i', $SteamID, $Matches)) {
+            if(count($Matches) == 3) {
+                $SteamID = '[U:1:'.(int)bcadd(bcmul($Matches[2], '2'), $Matches[1]).']';
+                return $SteamID;
+            }
+        }
+        if(preg_match('/^\[U:1:([0-9]{1,19})\]$/i', $SteamID, $Matches)) {
+            if(count($Matches) == 2 && $Matches[1] != 0) {
+                $Server = $Matches[1] & 1;
+                $Auth = (int)bcdiv(bcsub($Matches[1], $Server), '2');
+                $SteamID = 'STEAM_0:'.$Server.':'.$Auth;
+                return $SteamID;
             }
         }
         return false;

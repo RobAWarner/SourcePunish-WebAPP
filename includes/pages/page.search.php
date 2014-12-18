@@ -13,195 +13,273 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
-$SearchTypes = array('playername', 'playerid', 'playerip', 'player64', 'adminname', 'adminid', 'punishtype', 'authtype', 'reason', 'length', 'active', 'server', 'removed', 'datey', 'datem', 'dated');
+$GLOBALS['theme']->AddTitle($GLOBALS['trans'][1004]);
+
+$SearchTypes = array('playername', 'playerid', 'playerip', 'player64', 'adminname', 'adminid', 'punishtype', 'authtype', 'reason', 'length', 'active', 'server', 'removed', 'removername', 'removerid', 'removalreason', 'datey', 'datem', 'dated');
 
 if($_GET['q'] == 'searchme') {
     if(!USER_LOGGEDIN)
         Redirect('^search');
     else
-        Redirect('^search&player64='.USER_AUTH);
+        Redirect('^search&player64='.$GLOBALS['auth']->GetUser64().'#search-results');
 }
-    $Criteria = array();
-    $Queries = array();
-    $Rebuild = false;
-    /* Check/Validate Input */
-    foreach($SearchTypes as $Type) {
-        if(isset($_GET[$Type])) {
-            switch($Type) {
-                case 'playername':
-                    if($_GET[$Type] == '') {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Player_Name LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
+$Criteria = array();
+$Queries = array();
+$Rebuild = false;
+/* Check/Validate Input */
+foreach($SearchTypes as $Type) {
+    if(isset($_GET[$Type])) {
+        switch($Type) {
+            case 'playername':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Player_Name LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
-                case 'playerid':
-                    if(!$GLOBALS['steam']->ValidID($_GET[$Type])) {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Player_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'playerid':
+                if(!$GLOBALS['steam']->ValidID($_GET[$Type])) {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Player_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'playerip':
-                    if(!IsValidIP($_GET[$Type])) {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Player_IP=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'playerip':
+                if(!IsValidIP($_GET[$Type])) {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Player_IP=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'player64':
-                    if(!$GLOBALS['steam']->Valid64($_GET[$Type])) {
+            case 'player64':
+                $ID = $_GET[$Type];
+                if(IS32BIT) {
+                    $ID = (string)$_GET[$Type];
+                } else {
+                    if(!$GLOBALS['steam']->Valid64($ID)) {
                         $Rebuild = true;
                         continue 2;
                     }
-                    $SteamID = $GLOBALS['steam']->Steam64ToID($_GET[$Type]);
-                    if($SteamID === FALSE) {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Player_ID=\''.$GLOBALS['sql']->Escape($SteamID).'\'';
+                }
+                $SteamID = $GLOBALS['steam']->Steam64ToID($ID);
+                $SteamIDNew = $GLOBALS['steam']->Steam64ToID($ID, true);
+                if($SteamID === FALSE || $SteamIDNew == FALSE) {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = '(Punish_Player_ID=\''.$GLOBALS['sql']->Escape($SteamID).'\' OR Punish_Player_ID=\''.$GLOBALS['sql']->Escape($SteamIDNew).'\')';
                 break;
-                case 'adminname':
-                    if($_GET[$Type] == '') {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Admin_Name LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
+            case 'adminname':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Admin_Name LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
-                case 'adminid':
-                    if($_GET[$Type] == '') {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Admin_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'adminid':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Admin_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'punishtype':
-                    if($_GET[$Type] == '') {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Type=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'punishtype':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Type=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'authtype':
-                    if($_GET[$Type] == '') {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Auth_Type=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'authtype':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Auth_Type=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'reason':
-                    if($_GET[$Type] == '') {
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Reason LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
+            case 'reason':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Reason LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
-                case 'length':
-                    if((!IsNum($_GET[$Type]) && $_GET[$Type] != -1) || $_GET[$Type] < -1){
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Length=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'length':
+                if((!IsNum($_GET[$Type]) && $_GET[$Type] != -1) || $_GET[$Type] < -1){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Length=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'server':
-                    if(!IsNum($_GET[$Type]) || $_GET[$Type] < 0){
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    $Queries[] = 'Punish_Server_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
+            case 'server':
+                if(!IsNum($_GET[$Type]) || $_GET[$Type] < 0){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'Punish_Server_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'active':
-                    if(!IsNum($_GET[$Type]) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
-                        $Rebuild = true;
-                        continue 2;
-                    }
+            case 'active':
+                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                if($_GET[$Type] == 1)
                     $Queries[] = 'UnPunish=\'0\' AND Punish_Time+(Punish_Length*60) > '.time().'';
+                else
+                    $Queries[] = 'Punish_Time+(Punish_Length*60) < '.time().'';
                 break;
-                case 'removed':
-                    if(!IsNum($_GET[$Type]) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
-                        $Rebuild = true;
-                        continue 2;
-                    }
-                    if($_GET[$Type] == 1)
-                        $Queries[] = 'UnPunish=\'1\'';
-                    else
-                        $Queries[] = 'UnPunish=\'0\'';
+            case 'removed':
+                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                if($_GET[$Type] == 1)
+                    $Queries[] = 'UnPunish=\'1\'';
+                else
+                    $Queries[] = 'UnPunish=\'0\'';
                 break;
-                case 'datey':
-                    if(!IsNum($_GET[$Type]) || $_GET[$Type] > (int)date('Y') || $_GET[$Type] < 0){
-                        $Rebuild = true;
-                        continue 2;
-                    }
+            case 'removername':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'UnPunish_Admin_Name LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
-                case 'datem':
-                    if(!IsNum($_GET[$Type]) || $_GET[$Type] > 12 || $_GET[$Type] < 0 || !isset($_GET['dated']) || !isset($_GET['datey'])){
-                        $Rebuild = true;
-                        continue 2;
-                    }
+            case 'removerid':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'UnPunish_Admin_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
-                case 'dated':
-                    if(!IsNum($_GET[$Type]) || $_GET[$Type] > 31 || $_GET[$Type] < 0 || !isset($_GET['datem']) || !isset($_GET['datey'])){
-                        $Rebuild = true;
-                        continue 2;
-                    }
+            case 'removalreason':
+                if($_GET[$Type] == '') {
+                    $Rebuild = true;
+                    continue 2;
+                }
+                $Queries[] = 'UnPunish_Reason LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
-            }
-            $Criteria[$Type] = $_GET[$Type];
+            case 'datey':
+                if(!IsNum($_GET[$Type]) || $_GET[$Type] > (int)date('Y') || $_GET[$Type] < 0){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                break;
+            case 'datem':
+                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 12 || $_GET[$Type] < 0 || !isset($_GET['datey'])){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                break;
+            case 'dated':
+                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 31 || $_GET[$Type] < 0 || !isset($_GET['datem']) || !isset($_GET['datey'])){
+                    $Rebuild = true;
+                    continue 2;
+                }
+                break;
         }
+        $Criteria[$Type] = $_GET[$Type];
     }
-    if(isset($Criteria['datey'])) {
-        if(isset($Criteria['datem']) && isset($Criteria['dated'])) {
-            $DateStart = mktime(0,0,0,$Criteria['datem'],$Criteria['dated'],$Criteria['datey']);
-            $DateEnd = mktime(0,0,0,$Criteria['datem'],$Criteria['dated']+1,$Criteria['datey']);
-        } else {
-            $DateStart = mktime(0,0,0,0,0,$Criteria['datey']);
-            $DateEnd = mktime(0,0,0,0,0,$Criteria['datey']+1);
-        }
-        if($DateStart !== FALSE && $DateEnd !== FALSE)
-            $Queries[] = '(Punish_Time < '.$DateEnd.' AND Punish_Time > '.$DateStart.')';
+}
+if(isset($Criteria['datey'])) {
+    if(isset($Criteria['datem']) && isset($Criteria['dated'])) {
+        $DateStart = mktime(0,0,0,$Criteria['datem'],$Criteria['dated'],$Criteria['datey']);
+        $DateEnd = mktime(0,0,0,$Criteria['datem'],$Criteria['dated']+1,$Criteria['datey']);
+    } else if(isset($Criteria['datem'])) {
+        $DateStart = mktime(0,0,0,$Criteria['datem'],1,$Criteria['datey']);
+        $DateEnd = mktime(0,0,0,$Criteria['datem']+1,0,$Criteria['datey']);
+    } else {
+        $DateStart = mktime(0,0,0,1,1,$Criteria['datey']);
+        $DateEnd = mktime(0,0,0,1,1,$Criteria['datey']+1);
     }
-    if($Rebuild) {
-        if(!empty($Criteria))
-            Redirect('^search&'.http_build_query($Criteria));
-        else
-            Redirect('^search');
+    if($DateStart !== FALSE && $DateEnd !== FALSE)
+        $Queries[] = '(Punish_Time <= '.(int)$DateEnd.' AND Punish_Time >= '.(int)$DateStart.')';
+}
+if($Rebuild) {
+    if(!empty($Criteria))
+        Redirect('^search&'.http_build_query($Criteria).'#search-results');
+    else
+        Redirect('^search');
+}
+unset($Rebuild);
+$QueryString = '';
+if(!empty($Queries)) {
+    foreach($Queries as $Key => $Query) {
+        if($QueryString == '')
+            $QueryString .= ' WHERE ';
+        $QueryString .= $Query;
+        if($Key < (count($Queries)-1))
+            $QueryString .= ' AND ';
     }
-    unset($Rebuild);
-    $QueryString = '';
-    if(!empty($Queries)) {
-        foreach($Queries as $Key => $Query) {
-            if($QueryString == '')
-                $QueryString .= ' WHERE ';
-            $QueryString .= $Query;
-            if($Key < (count($Queries)-1))
-                $QueryString .= ' AND ';
-        }
-    }
-    unset($Queries);
-    //die(print('<pre>'.print_r($QueryString, true).'</pre>'));
+}
+unset($Queries);
 
-/* Build Form */
-$Form = '<form name="search-punish" id="form-search" action="'.ParseURL('^search').'" method="get">';
-    $Form .= '<input name="q" type="hidden" value="search" />';
-    $Form .= 'Player Name: <input name="playername" type="text" /><br />';
-    $Form .= 'Player ID: <input name="playerid" type="text" /><br />';
-    $Form .= 'Player Steam 64: <input name="player64" type="text" /><br />';
-    $Form .= 'Admin Name: <input name="adminname" type="text" /><br />';
-    $Form .= 'Admin ID: <input name="adminid" type="text" /><br />';
-    $Form .= 'Auth Type: <input name="authtype" type="text" /><br />';
-    $Form .= 'Punish Type: <input name="punishtype" type="text" /><br />';
-    $Form .= 'Punish Reason: <input name="reason" type="text" /><br />';
-    $Form .= 'Punish Length: <input name="length" type="text" /><br />';
-    $Form .= 'Punish Active: <input name="active" type="text" /><br />';
-    $Form .= 'Punish Removed: <input name="removed" type="text" /><br />';
-    $Form .= 'Server ID: <input name="server" type="text" /><br />';
-    $Form .= 'Date: DD<input name="dated" type="text" />/MM<input name="datem" type="text" />/YYYY<input name="datey" type="text" /><br />';
-    $Form .= '<br /><input value="Search..." type="submit" />';
+/* Build form in a table */
+/* Server List */
+$ServerListQuery = $GLOBALS['sql']->Query('SELECT Server_ID from '.SQL_PREFIX.'servers');
+$Servers = array();
+while($Row = $GLOBALS['sql']->FetchArray($ServerListQuery)) {
+    $Server = GetServerInfo($Row['Server_ID']);
+    $Servers[$Server['mod']['name']][$Row['Server_ID']] = $Server['name'];
+}
+$GLOBALS['sql']->Free($ServerListQuery);
+$ServerList = '<option'.(!isset($Criteria['server'])?' selected="selected"':'').' value="">-</option>';
+foreach($Servers as $Mod => $List) {
+    $ServerList .= '<optgroup label="'.htmlspecialchars($Mod).'">';
+    foreach($List as $ID => $Server) {
+        $ServerList .= '<option '.((isset($Criteria['server']) && $Criteria['server'] == $ID)?' selected="selected"':'').'value="'.$ID.'">'.htmlspecialchars($Server).'</option>';
+    }
+    $ServerList .= '</optgroup>';
+}
+unset($Servers);
+/* Date selectors */
+$FirstYear = $GLOBALS['sql']->Query_FetchArray('SELECT YEAR(FROM_UNIXTIME(Punish_Time)) as Punish_Year FROM '.SQL_PUNISHMENTS.' ORDER BY Punish_Time ASC LIMIT 1');
+$DateYList = '';
+if($FirstYear['Punish_Year'] > 0) {
+    $DateYList = '<option'.(!isset($Criteria['datey'])?' selected="selected"':'').' value="">-</option>';
+    for($i = (int)date('Y', time()); $i >= $FirstYear['Punish_Year'];$i--) {
+        $DateYList .= '<option '.((isset($Criteria['datey']) && $Criteria['datey'] == $i)?' selected="selected"':'').'value="'.$i.'">'.htmlspecialchars($i).'</option>';
+    }
+}
+unset($FirstYear);
+$DateMList = '<option'.(!isset($Criteria['datem'])?' selected="selected"':'').' value="">-</option>';
+for($i = 1;$i <= 12;$i++) {
+    $DateMList .= '<option '.((isset($Criteria['datem']) && $Criteria['datem'] == $i)?' selected="selected"':'').'value="'.$i.'">'.htmlspecialchars(date('F', mktime(0, 0, 0, $i, 10))).'</option>';
+}
+$DateDList = '<option'.(!isset($Criteria['dated'])?' selected="selected"':'').' value="">-</option>';
+for($i = 1;$i <= 32;$i++) {
+    $DateDList .= '<option '.((isset($Criteria['dated']) && $Criteria['dated'] == $i)?' selected="selected"':'').'value="'.$i.'">'.htmlspecialchars($i).'</option>';
+}
+
+$Table = array('class'=>'table-search',
+'rows'=>array(
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1400]), array('content'=>'<input name="playername" type="text"'.(isset($Criteria['playername'])?' value="'.$Criteria['playername'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1401]), array('content'=>'<input name="playerid" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], 'STEAM_0:1:12345678').'"'.(isset($Criteria['playerid'])?' value="'.$Criteria['playerid'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1402]), array('content'=>'<input name="player64" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], '76561191234567890').'"'.(isset($Criteria['player64'])?' value="'.$Criteria['player64'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1403]), array('content'=>'<input name="adminname" type="text"'.(isset($Criteria['adminname'])?' value="'.$Criteria['adminname'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1404]), array('content'=>'<input name="adminid" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], 'STEAM_0:1:87654321').'"'.(isset($Criteria['adminid'])?' value="'.$Criteria['adminid'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1405]), array('content'=>'<input name="authtype" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], 'Steam').'"'.(isset($Criteria['authtype'])?' value="'.$Criteria['authtype'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1406]), array('content'=>'<input name="punishtype" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], 'Ban').'"'.(isset($Criteria['punishtype'])?' value="'.$Criteria['punishtype'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1407]), array('content'=>'<input name="reason" type="text"'.(isset($Criteria['reason'])?' value="'.$Criteria['reason'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1408].' ('.$GLOBALS['trans'][1153].')'), array('content'=>'<input name="length" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], '1880').'"'.(isset($Criteria['length'])?' value="'.$Criteria['length'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1409]), array('content'=>'<select name="active"><option value="">-</option><option value="1"'.((isset($Criteria['active']) && $Criteria['active'] == 1)?' selected="selected"':'').'>Yes</option><option value="0"'.((isset($Criteria['active']) && $Criteria['active'] == 0)?' selected="selected"':'').'>No</option></select>'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1411]), array('content'=>'<select name="server">'.$ServerList.'</select>'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1410]), array('content'=>'<select name="removed"><option value="">-</option><option value="1"'.((isset($Criteria['removed']) && $Criteria['removed'] == 1)?' selected="selected"':'').'>Yes</option><option value="0"'.((isset($Criteria['removed']) && $Criteria['removed'] == 0)?' selected="selected"':'').'>No</option></select>'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1418]), array('content'=>'<input name="removername" type="text"'.(isset($Criteria['removername'])?' value="'.$Criteria['removername'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1419]), array('content'=>'<input name="removerid" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], 'STEAM_0:1:12345678').'"'.(isset($Criteria['removerid'])?' value="'.$Criteria['removerid'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1420]), array('content'=>'<input name="removalreason" type="text"'.(isset($Criteria['removalreason'])?' value="'.$Criteria['removalreason'].'"':'').' />'))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1412]), array('content'=>'<select name="dated" title="'.$GLOBALS['trans'][1413].'">'.$DateDList.'</select> / <select name="datem" title="'.$GLOBALS['trans'][1414].'">'.$DateMList.'</select> / '.(($DateYList != '')?'<select name="datey" title="'.$GLOBALS['trans'][1415].'">'.$DateYList.'</select>':'<input class="small" name="datey" maxlength="4" type="text" placeholder="'.$GLOBALS['trans'][1417].'" title="'.$GLOBALS['trans'][1415].'"'.(isset($Criteria['datey'])?' value="'.$Criteria['datey'].'"':'').' />')))),
+    array('cols'=>array(array('content'=>''), array('content'=>'<input value="Search..." type="submit" />')))
+));
+$Form = '<form name="search-punish" id="form-search" action="'.ParseURL('^search').'#search-results" method="get">';
+$Form .= '<input name="q" type="hidden" value="search" />';
+$Form .= $GLOBALS['theme']->BuildTable($Table);
 $Form .= '</form>';
-$GLOBALS['theme']->AddContent('Search Form', $Form);
+
+$GLOBALS['theme']->AddContent('Search Form', $Form, '', 'search-form');
 /* Get punishments matching criteria */
 if($QueryString != '') {
-    if(isset($_GET['p']) && $_GET['p'] != '' && filter_var($_GET['p'], FILTER_VALIDATE_INT) !== false && $_GET['p'] > 0)
+    if(isset($_GET['p']) && $_GET['p'] != '' && IsNum($_GET['p']) && $_GET['p'] > 0)
         $CurrentPage = intval($GLOBALS['sql']->Escape($_GET['p']));
     else {
         if(isset($_GET['p']))
@@ -214,9 +292,8 @@ if($QueryString != '') {
     $TotalPages = ceil((int)$TotalPages['prows']/$PerPage);
     
     if($CurrentPage > $TotalPages) {
-        $GLOBALS['theme']->AddContent('Search Results', ParseText('#TRANS_2011'));
+        $GLOBALS['theme']->AddContent('Search Results', '<div class="message error">'.$GLOBALS['trans'][2011].'</div>', '', 'search-results');
     } else {
-        //Redirect('^search');
         $Paginate_Limit = intval(($CurrentPage - 1) * $PerPage);
 
         $PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PUNISHMENTS.$QueryString.' ORDER BY Punish_Time DESC LIMIT '.$Paginate_Limit.', '.$PerPage);
@@ -226,12 +303,12 @@ if($QueryString != '') {
         }
         $GLOBALS['sql']->Free($PunishQuery);
         if(count($Rows) == 0) {
-            $Content = ParseText('#TRANS_2011');
+            $Content = '<div class="message error">'.$GLOBALS['trans'][2011].'</div>';
         } else {
             $Content = $GLOBALS['theme']->BuildPunishTable($Rows);
         }
         unset($Rows);
-        $GLOBALS['theme']->AddContent(ucwords(sprintf(ParseText('#TRANS_1157'), number_format($CurrentPage), number_format($TotalPages))), $Content);
+        $GLOBALS['theme']->AddContent(ucwords(sprintf($GLOBALS['trans'][1157], number_format($CurrentPage), number_format($TotalPages))), $Content, '', 'search-results');
         $GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^search&'.http_build_query($Criteria)).'&p='));
     }
 }

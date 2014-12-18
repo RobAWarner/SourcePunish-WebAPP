@@ -13,6 +13,8 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
+$GLOBALS['theme']->AddTitle($GLOBALS['trans'][1009]);
+
 /* TODO
     - Login form fallback
 */
@@ -27,12 +29,18 @@ if($_GET['q'] == 'logout') {
     else {
         if(isset($_GET['openid_signed']) && $_GET['openid_signed'] != '') {
             $TestLogin = $GLOBALS['auth']->ValidateLogin();
-            if($TestLogin !== false && $GLOBALS['steam']->Valid64($TestLogin)) {
-                $GLOBALS['auth']->SetSession($TestLogin);
-                Redirect('^');
-            } else {
+            if($TestLogin === FALSE)
                 Redirect('^login');
+            if(!IS32BIT) {
+                if(!$GLOBALS['steam']->Valid64($TestLogin))
+                    Redirect('^login');
             }
+            $GetSteamID = $GLOBALS['steam']->Steam64ToID($TestLogin);
+            if($GetSteamID !== false && $GLOBALS['steam']->ValidID($GetSteamID)) {
+                $GLOBALS['auth']->SetSession($GetSteamID);
+                Redirect('^');
+            } else
+                Redirect('^login');
         }
         $GLOBALS['theme']->AddTitle('Login');
         $Title = ParseText('#TRANS_3001');

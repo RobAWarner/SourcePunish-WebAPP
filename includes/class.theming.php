@@ -170,21 +170,29 @@ class Theming {
         );
         foreach($Rows as $Row) {
             $Server = GetServerInfo($Row['Punish_Server_ID']);
+            $Class = '';
             $ATime = array();
             $Time = PunishTime($Row['Punish_Length']);
-            if($Row['UnPunish'] == 1)
-                $ATime = array('content'=>$Time.' ('.ParseText('#TRANS_1140').')', 'class'=>'green');
-            else if(($Row['Punish_Time']+($Row['Punish_Length']*60) < time()) && $Row['Punish_Length'] > 0)
-                $ATime = array('content'=>$Time.' ('.ParseText('#TRANS_1139').')', 'class'=>'green');
-            else if($Row['Punish_Length'] == 0 && $Row['Punish_Type'] == 'kick')
-                $ATime = array('content'=>PunishTime(-1), 'class'=>'blue');
-            else if($Row['Punish_Length'] == 0)
-                $ATime = array('content'=>$Time, 'class'=>'red');
-            else
-                $ATime = array('content'=>$Time, 'class'=>'orange');
+            if($Row['UnPunish'] == 1) {
+                $ATime = array('content'=>ParseText('#TRANS_1140'), 'custom'=>'title="'.ParseText('#TRANS_1140').'"', 'class'=>'removed');
+                $Class = 'removed';
+            } else if(($Row['Punish_Time']+($Row['Punish_Length']*60) < time()) && $Row['Punish_Length'] > 0) {
+                $ATime = array('content'=>$Time, 'custom'=>'title="'.ParseText('#TRANS_1139').'"', 'class'=>'expired');
+                $Class = 'expired';
+            } else if(($Row['Punish_Length'] == 0 && $Row['Punish_Type'] == 'kick') || $Row['Punish_Length'] == -1) {
+                $ATime = array('content'=>PunishTime(-1), 'class'=>'notapplicable');
+                $Class = 'notapplicable';
+            } else if($Row['Punish_Length'] == 0) {
+                $ATime = array('content'=>$Time, 'class'=>'permanent');
+                $Class = 'permanent';
+            } else {
+                $ATime = array('content'=>$Time, 'custom'=>'title="'.ParseText('#TRANS_1158').'"', 'class'=>'active');
+                $Class = 'active';
+            }
             unset($Time);
-            $Table['rows'][] = array('cols'=>array(
-                array('content'=>ucwords(PrintTimeDiff(TimeDiff(time()-$Row['Punish_Time']), 1)).' '.ParseText('#TRANS_3003'), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
+            $Table['rows'][] = array('class'=>$Class,
+            'cols'=>array(
+                array('content'=>sprintf(ParseText('#TRANS_3003'), ucwords(PrintTimeDiff(TimeDiff(time()-$Row['Punish_Time']), 1))), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
                 array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'),
                 array('content'=>htmlspecialchars($Row['Punish_Player_Name'])),
                 array('content'=>htmlspecialchars(ucwords($Row['Punish_Type']))),
@@ -219,14 +227,14 @@ class Theming {
                     $Build['headings']['content'] .= DefaultTheme_TableCell($Heading);
                 }
             }
+            unset($Array['headings']);
+            if(function_exists('Subtheme_TableRow'))
+                $Build['headings'] = Subtheme_TableRow($Build['headings']);
+            else if(function_exists('Theme_TableRow'))
+                $Build['headings'] = Theme_TableRow($Build['headings']);
+            else
+                $Build['headings'] = DefaultTheme_TableRow($Build['headings']);
         }
-        unset($Array['headings']);
-        if(function_exists('Subtheme_TableRow'))
-            $Build['headings'] = Subtheme_TableRow($Build['headings']);
-        else if(function_exists('Theme_TableRow'))
-            $Build['headings'] = Theme_TableRow($Build['headings']);
-        else
-            $Build['headings'] = DefaultTheme_TableRow($Build['headings']);
         $Build['rows'] = '';
         if(isset($Array['rows'])) {
             foreach($Array['rows'] as $Row) {
@@ -270,15 +278,15 @@ class Theming {
             $MaxNumbers = 20;
             $Links = array();
             if($TotalPages <= $MaxNumbers) {
-				for($i = 1; $i <= $TotalPages; $i++) {
-					$Link = array('url'=>$PagePrefix.$i.$PageSuffix, 'text'=>$i, 'class'=>'');
+                for($i = 1; $i <= $TotalPages; $i++) {
+                    $Link = array('url'=>$PagePrefix.$i.$PageSuffix, 'text'=>$i, 'class'=>'');
                     if($i == 1) $Link['class'] .= 'first ';
                     if($i == $CurrentPage) $Link['class'] .= 'active ';
                     if($i == $TotalPages) $Link['class'] .= 'last';
                     $Link['class'] = trim($Link['class']);
                     if($Link['class'] == '') unset($Link['class']);
                     $Links[] = $Link;
-				}
+                }
             } else {
                 $Half = floor($MaxNumbers / 2);
                 $Start = $CurrentPage - $Half;
@@ -298,7 +306,7 @@ class Theming {
                     $Link['class'] = trim($Link['class']);
                     if($Link['class'] == '') unset($Link['class']);
                     $Links[] = $Link;
-				}
+                }
                 unset($Start, $Total);
             }
             $StartLinks[0] = array('url'=>$PagePrefix.'1'.$PageSuffix, 'text'=>'&laquo;&laquo;First', 'class'=>($CurrentPage<=1?'disabled':''));

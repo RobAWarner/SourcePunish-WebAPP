@@ -13,7 +13,9 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
-if(isset($_GET['p']) && $_GET['p'] != '' && filter_var($_GET['p'], FILTER_VALIDATE_INT) !== false && $_GET['p'] > 0)
+$GLOBALS['theme']->AddTitle($GLOBALS['trans'][1002]);
+
+if(isset($_GET['p']) && $_GET['p'] != '' && IsNum($_GET['p']) && $_GET['p'] > 0)
     $CurrentPage = intval($GLOBALS['sql']->Escape($_GET['p']));
 else {
     if(isset($_GET['p']))
@@ -27,7 +29,7 @@ if($CurrentPage > $TotalPages)
     Redirect('^punishments');
 $Paginate_Limit = intval(($CurrentPage - 1) * $PerPage);
 
-$PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PREFIX.'punishments ORDER BY Punish_Time DESC LIMIT '.$Paginate_Limit.', '.$PerPage);
+$PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PUNISHMENTS.' ORDER BY Punish_Time DESC LIMIT '.$Paginate_Limit.', '.$PerPage);
 $Rows = array();
 while($PunishRow = $GLOBALS['sql']->FetchArray($PunishQuery)) {
     $Rows[] = $PunishRow;
