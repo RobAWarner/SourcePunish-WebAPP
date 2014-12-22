@@ -95,7 +95,8 @@
 
 /* Tables */
 table.table-search {
-    width: 50%;
+    width: 100%;
+    max-width: 640px;
     margin: 0 auto;
 }
 table.table-search tr td:first-child {

@@ -20,19 +20,19 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     - Clean code! (With comments?)
     - Enable/disable PHP errors
     - Config for time display
+    - Config for timezone
     - Config to overwrite website URL, main page, php path etc
 */
 
+define('IN_SP', true);
+define('SP_WEB_VERSION', '0.0.4');
+define('SP_WEB_NAME', 'SourcePunish WebApp');
+
 /* Global Variable to cache some variables */
 $GLOBALS['varcache'] = array();
-
 $GLOBALS['varcache']['debug']['starttime'] = microtime(true);
 $GLOBALS['varcache']['debug']['lasttime'] = $GLOBALS['varcache']['debug']['starttime'];
 $GLOBALS['varcache']['debug']['lastmem'] = memory_get_usage();
-
-define('IN_SP', true);
-define('SP_WEB_VERSION', '0.0.3');
-define('SP_WEB_NAME', 'SourcePunish WebApp');
 
 /* Set the time zone */
 if(function_exists('date_default_timezone_set'))
@@ -53,23 +53,41 @@ ini_set('display_errors', '1');
 /* Set shutdown function */
 register_shutdown_function('ScriptShutdown');
 
+/* Load the configuration file */
+require_once('includes/config.php');
+if(!isset($GLOBALS['config']))
+    die('Error: Configuration(s) missing in file config.php');
+
 /* Some definitions */
 define('DATE_FORMAT', 'H:i - jS F Y');
-define('DIR_ROOT',    dirname(dirname(__FILE__)).'/');
+/* PHP Paths */
+if(isset($GLOBALS['config']['system']['path_php']) && !empty($GLOBALS['config']['system']['path_php'])) {
+    if(substr($GLOBALS['config']['system']['path_php'], -1) != '/' || substr($GLOBALS['config']['system']['path_php'], -1) != '\\')
+        $GLOBALS['config']['system']['path_php'] .= '/';
+    define('DIR_ROOT', $GLOBALS['config']['system']['path_php']);
+} else
+    define('DIR_ROOT', dirname(dirname(__FILE__)).'/');
+unset($GLOBALS['config']['system']['path_php']);
 define('DIR_INCLUDE', DIR_ROOT.'includes/');
 define('DIR_CACHE', DIR_ROOT.'data/');
 define('DIR_PAGES', DIR_INCLUDE.'pages/');
 define('DIR_THEMES',  DIR_ROOT.'themes/');
 define('DIR_TRANSLATIONS',  DIR_ROOT.'translations/');
 /* Work out the HTML root */
-$HTMLROOT = dirname($_SERVER['PHP_SELF']);
+if(isset($GLOBALS['config']['system']['path_html']) && !empty($GLOBALS['config']['system']['path_html'])) {
+    $HTMLROOT = $GLOBALS['config']['system']['path_html'];
+} else {
+    $HTMLROOT = dirname($_SERVER['PHP_SELF']);
+}
+unset($GLOBALS['config']['system']['path_html']);
 $HTMLROOT = str_replace('\\', '/', $HTMLROOT);
-if(substr($HTMLROOT, -1, 1) != '/')
-    $HTMLROOT .= '/';
 if($HTMLROOT == '.')
     $HTMLROOT = '/';
+else if(substr($HTMLROOT, -1, 1) != '/')
+    $HTMLROOT .= '/';
 define('HTML_ROOT', $HTMLROOT);
 unset($HTMLROOT);
+/* HTML Paths */
 define('HTML_IMAGES', HTML_ROOT.'static/images/');
 define('HTML_IMAGES_GAMES', HTML_IMAGES.'games/');
 define('HTML_SCRIPTS', HTML_ROOT.'static/scripts/');
@@ -77,6 +95,7 @@ define('HTML_CSS', HTML_ROOT.'static/css/');
 define('URL_PAGE', 'index.php');
 define('URL_QUERY', '?q=');
 
+/* Are we serving an ajax request? */
 if(isset($_GET['ajax']) && $_GET['ajax'] == '1')
     define('AJAX', true);
 else
@@ -97,11 +116,6 @@ if($IPAddress != '' && IsValidIP($IPAddress))
 else
     define('USER_ADDRESS', 'UNKNOWN');
 unset($IPAddress);
-
-/* Load the configuration file */
-require_once(DIR_INCLUDE.'config.php');
-if(!isset($GLOBALS['config']))
-    die('Error: Configuration(s) missing in file config.php');
 
 /* Debugging message function */
 function PrintDebug($Text, $Level = 1) {
@@ -163,17 +177,17 @@ require_once(DIR_INCLUDE.'class.auth.php');
 $GLOBALS['auth'] = new Auth();
 $IsValidSession = $GLOBALS['auth']->ValidateSession();
 if($IsValidSession) {
+    define('USER_LOGGEDIN', true);
     if($GLOBALS['auth']->IsAdmin()) {
         define('USER_ADMIN', true);
         if($GLOBALS['auth']->HasAdminFlag($GLOBALS['settings']['auth_superadmin_flag']))
             define('USER_SUPERADMIN', true);
     }
-    define('USER_LOGGEDIN', true);
 }
 if(!defined('USER_ADMIN')) define('USER_ADMIN', false);
 if(!defined('USER_SUPERADMIN')) define('USER_SUPERADMIN', false);
 if(!defined('USER_LOGGEDIN')) define('USER_LOGGEDIN', false);
-PrintDebug('Auth Class Loaded & Checked as \''.$GLOBALS['auth']->GetUserID().'\'');
+PrintDebug('Auth Class Loaded'.(USER_LOGGEDIN?' & Checked as \''.$GLOBALS['auth']->GetUserID().'\'':''));
 
 /* Theming */
 $ThemeName = $GLOBALS['settings']['site_theme'];
@@ -277,7 +291,7 @@ function Redirect($URL = '') {
     else
         $URL = ParseURL($URL);
     header('Location: '.$URL);
-    die(sprintf(ParseText('#TRANS_2009'), $URL));
+    die(sprintf($GLOBALS['trans'][2009], $URL));
 }
 function ParseURL($URL) {
     if(substr($URL, 0, 1) == '^') {
@@ -306,10 +320,20 @@ function ParseText($Text, $Trans = true, $BBCode = false, $AllowHTML = false) {
         $Text = preg_replace('#\[br\]#si', '<br />', $Text);
         $Text = preg_replace('#\[center\](.*?)\[/center\]#si', '<div class="center">\1</div>', $Text);
         $Text = preg_replace('#\[img\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)(\.(jpg|jpeg|gif|png))([\r\n]*)\[/img\]#sie', "'<img src=\'\\1\\2'.str_replace(array('?','&amp;','&','='),'','\\3').'\\4\' alt=\'\\1\\2'.str_replace(array('?','&amp;','&','='),'','\\3').'\\4\' />'", $Text);
-        $Text = preg_replace('#\[url\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf(ParseText('#TRANS_3002'), "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\2\\3</a>'", $Text);
-        $Text = preg_replace('#\[url=([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\](.*?)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf(ParseText('#TRANS_3002'), "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\5</a>'", $Text);
+        $Text = preg_replace('#\[url\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf($GLOBALS['trans'][3002], "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\2\\3</a>'", $Text);
+        $Text = preg_replace('#\[url=([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\](.*?)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf($GLOBALS['trans'][3002], "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\5</a>'", $Text);
     }
     return $Text;
+}
+function SpecialChars($Input) {
+    $Return = '';
+    if(is_array($Input)) {
+        foreach($Input as $Key => $Value) {
+            $Return[$Key] = SpecialChars($Value);
+        }
+    } else
+        $Return = htmlspecialchars($Input);
+    return $Return;
 }
 function CustomPageExists($Ref) {
     $PageRef = $GLOBALS['sql']->Escape($Ref);
@@ -329,19 +353,19 @@ function GetCustomPage($Ref) {
     } else {
         unset($PageQuery);
         $PageQuery['title'] = '';
-        $PageQuery['content'] = ParseText('#TRANS_2010');
+        $PageQuery['content'] = $GLOBALS['trans'][2010];
     }
     unset($PageQuery['page_auth']);
     return $PageQuery;
 }
-function GetServerInfo($GetServerInfo_ID) {
+function GetServerInfo($GetServerInfo_ID, $ReturnUnknow = true) {
     if(isset($GLOBALS['varcache']['servers'][$GetServerInfo_ID]))
         return $GLOBALS['varcache']['servers'][$GetServerInfo_ID];
     if($GetServerInfo_ID == 0) {
-        $GetServerInfo['name'] = ParseText('#TRANS_3006');
-        $GetServerInfo['host'] = ParseText('#TRANS_3007');
-        $GetServerInfo['ip'] = ParseText('#TRANS_3007');
-        $GetServerInfo['mod']['id'] = ParseText('#TRANS_3007');
+        $GetServerInfo['name'] = $GLOBALS['trans'][3006];
+        $GetServerInfo['host'] = $GLOBALS['trans'][3007];
+        $GetServerInfo['ip'] = $GLOBALS['trans'][3007];
+        $GetServerInfo['mod']['id'] = $GLOBALS['trans'][3007];
         $GetServerInfo['mod']['short'] = 'Web';
         $GetServerInfo['mod']['name'] = 'Web Panel';
         $GetServerInfo['mod']['image'] = 'web.png';
@@ -351,6 +375,8 @@ function GetServerInfo($GetServerInfo_ID) {
     $GetServerInfo_ID = $GLOBALS['sql']->Escape($GetServerInfo_ID);
     $GetServerInfo_Row = $GLOBALS['sql']->Query_FetchArray('SELECT * FROM '.SQL_PREFIX.'servers WHERE Server_ID=\''.$GetServerInfo_ID.'\' LIMIT 1');
     if(empty($GetServerInfo_Row)) {
+        if(!$ReturnUnknow)
+            return false;
         $GetServerInfo['name'] = 'Unknown';
         $GetServerInfo['host'] = 'N/A';
         $GetServerInfo['ip'] = 'N/A';
@@ -373,11 +399,23 @@ function GetServerInfo($GetServerInfo_ID) {
     $GLOBALS['varcache']['servers'][$GetServerInfo_ID] = $GetServerInfo;
     return $GetServerInfo;
 }
+function GetAddressFromString($Address) {
+    $Addr['port'] = 27015;
+    $Addr['address'] = $Address;
+    /* Get port number */
+    if(strpos($Address, ':') !== false) {
+        $IPTMP = explode(':', $Address, 2);
+        $Addr['address'] = $IPTMP[0];
+        if(IsNum((int)$IPTMP[1]))
+            $Addr['port'] = (int)$IPTMP[1];
+    }
+    return $Addr;
+}
 function PunishTime($Time, $Count = 1) {
     if($Time == -1)
-        return ParseText('#TRANS_3007');
+        return $GLOBALS['trans'][3007];
     else if($Time == 0)
-        return ParseText('#TRANS_1141');
+        return $GLOBALS['trans'][1141];
     $GetTime = TimeDiff($Time*60, true);
     return PrintTimeDiff($GetTime, $Count, true);
 }
@@ -428,7 +466,7 @@ function PrintTimeDiff($TimeAgo, $Count = 0, $Trans = true) {
             if($i > 1)
                 $TimeString .= ', ';
             if($Trans)
-                $TimeString .= $Time.' '.(($Time>1)?ParseText('#TRANS_'.($STime+1)):ParseText('#TRANS_'.$STime));
+                $TimeString .= $Time.' '.(($Time>1)?$GLOBALS['trans'][$STime+1]:$GLOBALS['trans'][$STime]);
             else
                 $TimeString .= $Time.' '.(($Time>1)?$STime.'s':$STime);
             if($Count != 0 && $i >= $Count)

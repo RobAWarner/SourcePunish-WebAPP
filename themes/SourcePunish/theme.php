@@ -23,6 +23,7 @@ $GLOBALS['themeinfo']['subthemes']['required'] = true;
 
 /* Theme Functions */
 $GLOBALS['theme']->AddStyle(HTML_THEME_PATH.'styles.css');
+$GLOBALS['theme']->AddScript(HTML_THEME_PATH.'pageinit.js');
 $GLOBALS['theme']->AddScript('//html5shiv.googlecode.com/svn/trunk/html5.js', 'if lt IE 9');
 
 

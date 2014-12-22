@@ -1,4 +1,12 @@
 $(document).ready(function() {
+    $('.table-servers > tbody tr').each(function() {
+        if($(this).attr('data-sid') !== undefined) {
+            $(this).addClass('clickable');
+            $(this).click(function() {
+                window.location.href = $(location).attr('pathname')+'?q=servers&id='+$(this).attr('data-sid');
+            });
+        }
+    });
     /* Load the server query ajax */
     $.ajax({
 		url:$(location).attr('pathname')+'?q=serverquery&ajax=1&nocache='+$.now(),
@@ -23,8 +31,15 @@ $(document).ready(function() {
                                 $ServerRow.find('td:nth-child(3)').html(Info.hostname);
                         }
                         if(Info.numplayers != 'undefined' && Info.maxplayers != 'undefined') {
-                            if($ServerRow.find('td:nth-child(5)').html() != Info.numplayers+'/'+Info.maxplayers)
-                                $ServerRow.find('td:nth-child(5)').html(Info.numplayers+'/'+Info.maxplayers);
+                            $Players = ''+Info.numplayers;
+                            $Players += '/'+Info.maxplayers;
+                            if(Info.bots != 'undefined' && Info.bots > 0) {
+                                $Players += ' <span title="bots">('+Info.bots+')</span>'
+                            }
+                            if($ServerRow.find('td:nth-child(5)').html() != $Players) {
+                                $ServerRow.find('td:nth-child(5)').html($Players);
+                                DoToolTip();
+                            }
                         }
                         if(Info.map !== 'undefined') {
                             if($ServerRow.find('td:nth-child(6)').html() != Info.map)

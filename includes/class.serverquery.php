@@ -27,17 +27,21 @@ class ServerQuery {
 
     /* Ensure connection closes */
     public function __destruct() {
+        PrintDebug('Called ServerQuery->__destruct', 2);
         $this->Disconnect();
     }
     /* Open a connection to a server */
     public function Connect($Address, $Port = 27015, $Timeout = null) {
-        if($Timeout == null)
-            $Timeout = $this->Timeout;
+        PrintDebug('Called ServerQuery->Connect with Address: "'.$Address.'" / Port: "'.$Port.'" / Timeout: "'.$Timeout.'"', 2);
         if($this->Connection !== null)
             $this->Disconnect();
         else
             $this->Reset(true);
-        $this->Connection = @fsockopen('udp://'.$Address, $Port, $ErrorNum, $ErrorString, $Timeout);
+        if($Timeout !== null)
+            $this->Timeout = (int)$Timeout;
+        else
+            $Timeout = $this->Timeout;
+        $this->Connection = @fsockopen('udp://'.$Address, $Port, $ErrorNum, $ErrorString, $this->Timeout);
         if($ErrorNum || $this->Connection === false) {
             $this->Disconnect();
             return false;
@@ -48,6 +52,7 @@ class ServerQuery {
     }
     /* Close the connection to the server */
     public function Disconnect() {
+        PrintDebug('Called ServerQuery->Disconnect', 2);
         if($this->Connection !== null) {
             @fclose($this->Connection);
             $this->Reset(true);
@@ -55,6 +60,7 @@ class ServerQuery {
     }
     /* Fetch basic information from the server */
     public function GetServerInfo() {
+        PrintDebug('Called ServerQuery->GetServerInfo', 2);
         if($this->Connection === null)
             return false;
         $TryRequest = $this->DataRequest("\x54Source Engine Query\0");
@@ -111,6 +117,7 @@ class ServerQuery {
     }
     /* Get a player list from the server */
     public function GetPlayers() {
+        PrintDebug('Called ServerQuery->GetPlayers', 2);
         if($this->Connection === null)
             return false;
         $Challenge = $this->GetChallenge("\x55");
@@ -147,6 +154,7 @@ class ServerQuery {
     }
     
     public function GetRules() {
+        PrintDebug('Called ServerQuery->GetRules', 2);
         if($this->Connection === null)
             return false;
         $Challenge = $this->GetChallenge("\x56");
@@ -181,6 +189,7 @@ class ServerQuery {
         return false;
     }
     private function Reset($Connection = false) {
+        PrintDebug('Called ServerQuery->Reset', 2);
         if($Connection) {
             $this->Timeout = 3;
             $this->Connection = null;

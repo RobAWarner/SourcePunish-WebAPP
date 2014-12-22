@@ -17,6 +17,8 @@ $GLOBALS['theme']->AddTitle($GLOBALS['trans'][1009]);
 
 /* TODO
     - Login form fallback
+    - Text about login
+    - Move button to theming?
 */
 
 if($_GET['q'] == 'logout') {
@@ -42,8 +44,7 @@ if($_GET['q'] == 'logout') {
             } else
                 Redirect('^login');
         }
-        $GLOBALS['theme']->AddTitle('Login');
-        $Title = ParseText('#TRANS_3001');
+        $Title = $GLOBALS['trans'][3001];
         $GetLoginButton = '<div class="center"><a href="'.$GLOBALS['auth']->GetLoginURL().'" title="'.$Title.'" class="steam-openid-button">';
         $GetLoginButton .= '<img src="'.HTML_IMAGES.'steam_signin_big.png" alt="'.$Title.'" />';
         $GetLoginButton .= '</a></div>';

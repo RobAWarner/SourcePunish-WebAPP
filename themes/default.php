@@ -72,6 +72,7 @@ function DefaultTheme_BuildPage($Array) {
     $Build = '<!DOCTYPE html>'."\n";
     $Build .= '<html lang="en">'."\n";
     $Build .= '<head>'."\n";
+    $Build .= '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />'."\n";
     $Build .= '<meta charset="utf-8">'."\n";
     $Build .= $Array['head'];
     $Build .= '</head>'."\n";

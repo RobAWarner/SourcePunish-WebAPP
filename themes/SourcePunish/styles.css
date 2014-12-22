@@ -1,3 +1,4 @@
+/* Reset styles */
 html, body, form, fieldset, p, a, ul, li, div, label, br, input, textarea, h1, h2, h3 {
     margin: 0;
     padding: 0;
@@ -38,6 +39,7 @@ table thead th {
     font-weight: bold;
 }
 
+/* Body */
 body {
     height: 100%;
     background: transparent;
@@ -153,7 +155,6 @@ body {
 /* Content */
 .wrapper-content {
     background: #FFF;
-    /*padding: 10px 0px;*/
     position: relative;
 }
 .wrapper-content .section-content  {
@@ -169,6 +170,13 @@ body {
     padding: 6px 0px 6px 8px;
     box-shadow: 0px 0px 1px 0px rgba(0,0,0,1);
     margin-bottom: 8px;
+}
+.wrapper-content .section-content h1 .action-buttons {
+    float: right;
+    margin-right: 8px;
+}
+.wrapper-content .section-content h1 .action-buttons a {
+    font-weight: bold;
 }
 
 /* Tables */
@@ -191,16 +199,56 @@ tbody tr:nth-child(even) {
 }
 tbody tr:hover {
     background-color: #e0e0e0;
+    /*box-shadow: 0px 0px 1px 2px rgba(0,0,0,0.3);*/
 }
 .table-punish thead th, .table-punish tbody td {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
 }
+table.table-view tbody tr td {
+    text-align: left;
+}
+table.table-view tbody tr td:first-child {
+    text-align: center;
+    width: 300px;
+    font-weight: bold;
+}
+table.table-view tbody tr td {
+    padding: 10px;
+}
 
 /* Forms */
+form select, 
+form input {
+    border: 1px solid #8C8C8C;
+    border-radius: 2px;
+    margin: 3px;
+    padding: 6px;
+    color: #666;
+}
 form input[type=text] {
-    border: 1px solid #000;
+    width: 85%;
+}
+form select:hover,
+form select:focus,
+form input:hover,
+form input:focus {
+    border: 1px solid #575757;
+    box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.5);
+    color: #000;
+}
+form select {
+    padding: 3px;
+    max-width: 100%;
+}
+form input[type=submit] {
+    color: #000;
+    background: #fff;
+    cursor: pointer;
+}
+form .small {
+    width: 50px !important;
 }
 
 /* Pagination */
@@ -227,6 +275,7 @@ form input[type=text] {
     cursor: not-allowed !important;
 }
 
+/* Footer */
 #footer {
     height: 26px;
     line-height: 26px;

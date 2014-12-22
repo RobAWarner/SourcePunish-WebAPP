@@ -18,9 +18,9 @@ if(!defined('IN_SP')) die('Access Denied!');
 class Steam {
     public $ProfilesURL = 'https://steamcommunity.com/profiles/';
 
-    public function Valid64($Steam64) {
+    public function Valid64(string $Steam64) {
         PrintDebug('Called Steam->Valid64 with \''.$Steam64.'\'', 2);
-        if(preg_match('/^([0-9]{17,19})+$/', $Steam64) && (int)$Steam64 > 76561197960265728 && (int)$Steam64 < 9223372036854775807)
+        if(preg_match('/^([0-9]{17,19})+$/', $Steam64) && bccomp($Steam64, '76561197960265728') >= 0 && bccomp('9223372036854775807', $Steam64) >= 0)
             return true;
         else
             return false;
@@ -48,7 +48,10 @@ class Steam {
         PrintDebug('Called Steam->Steam64ToID with \''.$Steam64.'\' AND \''.($NewID?'true':'false').'\'', 2);
         if(!$NewID) {
             $Server = bcsub($Steam64, '76561197960265728') & 1;
-            $SteamID = 'STEAM_0:'.$Server.':'.(int)bcdiv(bcsub(bcsub($Steam64, '76561197960265728'), $Server), '2');
+            $Auth = (string)bcdiv(bcsub(bcsub($Steam64, '76561197960265728'), $Server), '2');
+            if(strpos($Auth, '.') !== false)
+                $Auth = substr($Auth, 0, strpos($Auth, '.'));
+            $SteamID = 'STEAM_0:'.$Server.':'.$Auth;
             if($this->ValidID($SteamID, 1))
                 return $SteamID;
         } else {

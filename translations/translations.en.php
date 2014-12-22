@@ -90,7 +90,11 @@ $GLOBALS['trans'][1205] = 'VAC';
 $GLOBALS['trans'][1206] = 'Location';
 $GLOBALS['trans'][1207] = 'Time';
 $GLOBALS['trans'][1208] = 'Connect to this server';
-$GLOBALS['trans'][1209] = 'Server List';
+$GLOBALS['trans'][1209] = 'Server list';
+$GLOBALS['trans'][1210] = 'Player list';
+$GLOBALS['trans'][1211] = 'Player Name';
+$GLOBALS['trans'][1212] = 'Score';
+$GLOBALS['trans'][1213] = 'Connection Time';
 /* Stats */
 $GLOBALS['trans'][1300] = 'Total punishments on record: %s';
 $GLOBALS['trans'][1301] = 'Total punishments for %s';
