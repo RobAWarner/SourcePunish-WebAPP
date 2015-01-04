@@ -22,7 +22,7 @@ if(!defined('IN_SP')) die('Access Denied!');
 function DefaultTheme_AddContent($Array) {
     $Build = '<section'.(isset($Array['id'])?' id="'.$Array['id'].'"':'').' class="section-content'.(isset($Array['class'])?' '.$Array['class']:'').'">'."\n";
     if(isset($Array['title'])) $Build .= '<header><h1>'.$Array['title'].'</h1></header>'."\n";
-    $Build .= $Array['content']."\n";
+    $Build .= '<div class="section-content-inner">'.$Array['content'].'</div>'."\n";
     $Build .= '</section>'."\n";
     return $Build;
 }

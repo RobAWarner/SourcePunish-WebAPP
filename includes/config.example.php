@@ -2,6 +2,9 @@
 if(!defined('IN_SP')) die('Access Denied!');
 
 $GLOBALS['config']['system']['printdebug'] = 2;
+$GLOBALS['config']['system']['phperrors'] = true;
+$GLOBALS['config']['system']['path_php'] = '';
+$GLOBALS['config']['system']['path_html'] = '';
 $GLOBALS['config']['sql']['host'] = 'localhost';
 $GLOBALS['config']['sql']['username'] = 'user1';
 $GLOBALS['config']['sql']['password'] = 'password';

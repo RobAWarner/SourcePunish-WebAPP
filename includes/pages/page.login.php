@@ -16,8 +16,8 @@ if(!defined('IN_SP')) die('Access Denied!');
 $GLOBALS['theme']->AddTitle($GLOBALS['trans'][1009]);
 
 /* TODO
-    - Login form fallback
-    - Text about login
+    - Login form fall-back
+    - Text about login (cookies)
     - Move button to theming?
 */
 

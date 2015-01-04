@@ -18,7 +18,7 @@ if(!defined('IN_SP')) die('Access Denied!');
 class Steam {
     public $ProfilesURL = 'https://steamcommunity.com/profiles/';
 
-    public function Valid64(string $Steam64) {
+    public function Valid64($Steam64) {
         PrintDebug('Called Steam->Valid64 with \''.$Steam64.'\'', 2);
         if(preg_match('/^([0-9]{17,19})+$/', $Steam64) && bccomp($Steam64, '76561197960265728') >= 0 && bccomp('9223372036854775807', $Steam64) >= 0)
             return true;

@@ -13,34 +13,45 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
+/* Add page title */
 $GLOBALS['theme']->AddTitle($GLOBALS['trans'][1002]);
 
-if(isset($_GET['p']) && $_GET['p'] != '' && IsNum($_GET['p']) && $_GET['p'] > 0)
-    $CurrentPage = intval($GLOBALS['sql']->Escape($_GET['p']));
+/* Check the page number if it exists */
+if(isset($_GET['p']) && CheckVar($_GET['p'], SP_VAR_INT))
+    $CurrentPage = (int)$GLOBALS['sql']->Escape($_GET['p']);
 else {
     if(isset($_GET['p']))
         Redirect('^punishments');
     else
         $CurrentPage = 1;
 }
+
+/* Pagination variable */
 $PerPage = 40;
+if(isset($GLOBALS['settings']['punish_perpage']) && CheckVar($GLOBALS['settings']['punish_perpage'], SP_VAR_INT))
+    $PagePage = (int)$GLOBALS['settings']['punish_perpage'];
 $TotalPages = ceil($GLOBALS['varcache']['punishcount']/$PerPage);
 if($CurrentPage > $TotalPages) 
     Redirect('^punishments');
 $Paginate_Limit = intval(($CurrentPage - 1) * $PerPage);
 
+/* Fetch all punishments */
 $PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PUNISHMENTS.' ORDER BY Punish_Time DESC LIMIT '.$Paginate_Limit.', '.$PerPage);
 $Rows = array();
 while($PunishRow = $GLOBALS['sql']->FetchArray($PunishQuery)) {
     $Rows[] = $PunishRow;
 }
 $GLOBALS['sql']->Free($PunishQuery);
-if(count($Rows) == 0) {
-    $Content = ParseText('#TRANS_2011');
-} else {
-    $Content = $GLOBALS['theme']->BuildPunishTable($Rows);
-}
+
+/* Check if any punishment exist */
+if(count($Rows) == 0)
+    $Content = $GLOBALS['trans'][2011];
+else
+    $Content = BuildPunishTable($Rows);
 unset($Rows);
-$GLOBALS['theme']->AddContent(ucwords(sprintf(ParseText('#TRANS_1157'), number_format($CurrentPage), number_format($TotalPages))), $Content);
+
+/* Add main content to page */
+$GLOBALS['theme']->AddContent(ucwords(sprintf($GLOBALS['trans'][1157], number_format($CurrentPage), number_format($TotalPages))), $Content);
+/* Add pagination links to page */
 $GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^punishments').'&p='));
 ?>

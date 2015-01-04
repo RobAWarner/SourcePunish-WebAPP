@@ -13,10 +13,13 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
+/* Add page title */
 $GLOBALS['theme']->AddTitle($GLOBALS['trans'][1004]);
 
+/* Valid search types */
 $SearchTypes = array('playername', 'playerid', 'playerip', 'player64', 'adminname', 'adminid', 'punishtype', 'authtype', 'reason', 'length', 'active', 'server', 'removed', 'removername', 'removerid', 'removalreason', 'datey', 'datem', 'dated');
 
+/* Redirect for search on self */
 if($_GET['q'] == 'searchme') {
     if(!USER_LOGGEDIN)
         Redirect('^search');
@@ -53,13 +56,9 @@ foreach($SearchTypes as $Type) {
                 break;
             case 'player64':
                 $ID = $_GET[$Type];
-                if(IS32BIT) {
-                    $ID = (string)$_GET[$Type];
-                } else {
-                    if(!$GLOBALS['steam']->Valid64($ID)) {
-                        $Rebuild = true;
-                        continue 2;
-                    }
+                if(!$GLOBALS['steam']->Valid64($ID)) {
+                    $Rebuild = true;
+                    continue 2;
                 }
                 $SteamID = $GLOBALS['steam']->Steam64ToID($ID);
                 $SteamIDNew = $GLOBALS['steam']->Steam64ToID($ID, true);
@@ -105,21 +104,21 @@ foreach($SearchTypes as $Type) {
                 $Queries[] = 'Punish_Reason LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
             case 'length':
-                if((!IsNum($_GET[$Type]) && $_GET[$Type] != -1) || $_GET[$Type] < -1){
+                if((!CheckVar($_GET[$Type], SP_VAR_INT) && $_GET[$Type] != -1) || $_GET[$Type] < -1){
                     $Rebuild = true;
                     continue 2;
                 }
                 $Queries[] = 'Punish_Length=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
             case 'server':
-                if(!IsNum($_GET[$Type]) || $_GET[$Type] < 0){
+                if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] < 0){
                     $Rebuild = true;
                     continue 2;
                 }
                 $Queries[] = 'Punish_Server_ID=\''.$GLOBALS['sql']->Escape($_GET[$Type]).'\'';
                 break;
             case 'active':
-                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
+                if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
                     $Rebuild = true;
                     continue 2;
                 }
@@ -129,7 +128,7 @@ foreach($SearchTypes as $Type) {
                     $Queries[] = 'Punish_Time+(Punish_Length*60) < '.time().'';
                 break;
             case 'removed':
-                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
+                if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
                     $Rebuild = true;
                     continue 2;
                 }
@@ -160,19 +159,19 @@ foreach($SearchTypes as $Type) {
                 $Queries[] = 'UnPunish_Reason LIKE \'%'.$GLOBALS['sql']->Escape($_GET[$Type]).'%\'';
                 break;
             case 'datey':
-                if(!IsNum($_GET[$Type]) || $_GET[$Type] > (int)date('Y') || $_GET[$Type] < 0){
+                if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] > (int)date('Y') || $_GET[$Type] < 0){
                     $Rebuild = true;
                     continue 2;
                 }
                 break;
             case 'datem':
-                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 12 || $_GET[$Type] < 0 || !isset($_GET['datey'])){
+                if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] > 12 || $_GET[$Type] < 0 || !isset($_GET['datey'])){
                     $Rebuild = true;
                     continue 2;
                 }
                 break;
             case 'dated':
-                if(!IsNum($_GET[$Type]) || $_GET[$Type] > 31 || $_GET[$Type] < 0 || !isset($_GET['datem']) || !isset($_GET['datey'])){
+                if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] > 31 || $_GET[$Type] < 0 || !isset($_GET['datem']) || !isset($_GET['datey'])){
                     $Rebuild = true;
                     continue 2;
                 }
@@ -181,6 +180,8 @@ foreach($SearchTypes as $Type) {
         $Criteria[$Type] = $_GET[$Type];
     }
 }
+
+/* If searching a date, create the timestamps needed */
 if(isset($Criteria['datey'])) {
     if(isset($Criteria['datem']) && isset($Criteria['dated'])) {
         $DateStart = mktime(0,0,0,$Criteria['datem'],$Criteria['dated'],$Criteria['datey']);
@@ -195,6 +196,8 @@ if(isset($Criteria['datey'])) {
     if($DateStart !== FALSE && $DateEnd !== FALSE)
         $Queries[] = '(Punish_Time <= '.(int)$DateEnd.' AND Punish_Time >= '.(int)$DateStart.')';
 }
+
+/* Do we need to redirect to correct invalid inputs? */
 if($Rebuild) {
     if(!empty($Criteria))
         Redirect('^search&'.http_build_query($Criteria).'#search-results');
@@ -202,6 +205,8 @@ if($Rebuild) {
         Redirect('^search');
 }
 unset($Rebuild);
+
+/* Build the SQL 'WHERE' clause */
 $QueryString = '';
 if(!empty($Queries)) {
     foreach($Queries as $Key => $Query) {
@@ -214,9 +219,9 @@ if(!empty($Queries)) {
 }
 unset($Queries);
 
-/* Build form in a table */
-/* Server List */
-$ServerListQuery = $GLOBALS['sql']->Query('SELECT Server_ID from '.SQL_PREFIX.'servers');
+/* Build the search form in a table */
+/* Build server list */
+$ServerListQuery = $GLOBALS['sql']->Query('SELECT Server_ID FROM '.SQL_SERVERS);
 $Servers = array();
 while($Row = $GLOBALS['sql']->FetchArray($ServerListQuery)) {
     $Server = GetServerInfo($Row['Server_ID']);
@@ -225,32 +230,33 @@ while($Row = $GLOBALS['sql']->FetchArray($ServerListQuery)) {
 $GLOBALS['sql']->Free($ServerListQuery);
 $ServerList = '<option'.(!isset($Criteria['server'])?' selected="selected"':'').' value="">-</option>';
 foreach($Servers as $Mod => $List) {
-    $ServerList .= '<optgroup label="'.htmlspecialchars($Mod).'">';
+    $ServerList .= '<optgroup label="'.SpecialChars($Mod).'">';
     foreach($List as $ID => $Server) {
-        $ServerList .= '<option '.((isset($Criteria['server']) && $Criteria['server'] == $ID)?' selected="selected"':'').'value="'.$ID.'">'.htmlspecialchars($Server).'</option>';
+        $ServerList .= '<option '.((isset($Criteria['server']) && $Criteria['server'] == $ID)?' selected="selected"':'').'value="'.$ID.'">'.SpecialChars($Server).'</option>';
     }
     $ServerList .= '</optgroup>';
 }
 unset($Servers);
-/* Date selectors */
+/* Build date selectors */
 $FirstYear = $GLOBALS['sql']->Query_FetchArray('SELECT YEAR(FROM_UNIXTIME(Punish_Time)) as Punish_Year FROM '.SQL_PUNISHMENTS.' ORDER BY Punish_Time ASC LIMIT 1');
 $DateYList = '';
 if($FirstYear['Punish_Year'] > 0) {
     $DateYList = '<option'.(!isset($Criteria['datey'])?' selected="selected"':'').' value="">-</option>';
     for($i = (int)date('Y', time()); $i >= $FirstYear['Punish_Year'];$i--) {
-        $DateYList .= '<option '.((isset($Criteria['datey']) && $Criteria['datey'] == $i)?' selected="selected"':'').'value="'.$i.'">'.htmlspecialchars($i).'</option>';
+        $DateYList .= '<option '.((isset($Criteria['datey']) && $Criteria['datey'] == $i)?' selected="selected"':'').'value="'.$i.'">'.SpecialChars($i).'</option>';
     }
 }
 unset($FirstYear);
 $DateMList = '<option'.(!isset($Criteria['datem'])?' selected="selected"':'').' value="">-</option>';
 for($i = 1;$i <= 12;$i++) {
-    $DateMList .= '<option '.((isset($Criteria['datem']) && $Criteria['datem'] == $i)?' selected="selected"':'').'value="'.$i.'">'.htmlspecialchars(date('F', mktime(0, 0, 0, $i, 10))).'</option>';
+    $DateMList .= '<option '.((isset($Criteria['datem']) && $Criteria['datem'] == $i)?' selected="selected"':'').'value="'.$i.'">'.SpecialChars(date('F', mktime(0, 0, 0, $i, 10))).'</option>';
 }
 $DateDList = '<option'.(!isset($Criteria['dated'])?' selected="selected"':'').' value="">-</option>';
 for($i = 1;$i <= 32;$i++) {
-    $DateDList .= '<option '.((isset($Criteria['dated']) && $Criteria['dated'] == $i)?' selected="selected"':'').'value="'.$i.'">'.htmlspecialchars($i).'</option>';
+    $DateDList .= '<option '.((isset($Criteria['dated']) && $Criteria['dated'] == $i)?' selected="selected"':'').'value="'.$i.'">'.SpecialChars($i).'</option>';
 }
 
+/* Create main table */
 $Table = array('class'=>'table-search',
 'rows'=>array(
     array('cols'=>array(array('content'=>$GLOBALS['trans'][1400]), array('content'=>'<input name="playername" type="text"'.(isset($Criteria['playername'])?' value="'.$Criteria['playername'].'"':'').' />'))),
@@ -271,15 +277,20 @@ $Table = array('class'=>'table-search',
     array('cols'=>array(array('content'=>$GLOBALS['trans'][1412]), array('content'=>'<select name="dated" title="'.$GLOBALS['trans'][1413].'">'.$DateDList.'</select> / <select name="datem" title="'.$GLOBALS['trans'][1414].'">'.$DateMList.'</select> / '.(($DateYList != '')?'<select name="datey" title="'.$GLOBALS['trans'][1415].'">'.$DateYList.'</select>':'<input class="small" name="datey" maxlength="4" type="text" placeholder="'.$GLOBALS['trans'][1417].'" title="'.$GLOBALS['trans'][1415].'"'.(isset($Criteria['datey'])?' value="'.$Criteria['datey'].'"':'').' />')))),
     array('cols'=>array(array('content'=>''), array('content'=>'<input value="Search..." type="submit" />')))
 ));
+
+/* Create the form */
 $Form = '<form name="search-punish" id="form-search" action="'.ParseURL('^search').'#search-results" method="get">';
 $Form .= '<input name="q" type="hidden" value="search" />';
 $Form .= $GLOBALS['theme']->BuildTable($Table);
 $Form .= '</form>';
 
+/* Add the finished form to the page */
 $GLOBALS['theme']->AddContent('Search Form', $Form, '', 'search-form');
+
 /* Get punishments matching criteria */
 if($QueryString != '') {
-    if(isset($_GET['p']) && $_GET['p'] != '' && IsNum($_GET['p']) && $_GET['p'] > 0)
+    /* Check page number if it exists */
+    if(isset($_GET['p']) && CheckVar($_GET['p'], SP_VAR_INT))
         $CurrentPage = intval($GLOBALS['sql']->Escape($_GET['p']));
     else {
         if(isset($_GET['p']))
@@ -288,27 +299,35 @@ if($QueryString != '') {
             $CurrentPage = 1;
     }
     $PerPage = 40;
+    if(isset($GLOBALS['settings']['punish_perpage']) && CheckVar($GLOBALS['settings']['punish_perpage'], SP_VAR_INT))
+        $PagePage = (int)$GLOBALS['settings']['punish_perpage'];
     $TotalPages = $GLOBALS['sql']->Query_FetchArray('SELECT count(*) AS prows FROM '.SQL_PUNISHMENTS.$QueryString);
     $TotalPages = ceil((int)$TotalPages['prows']/$PerPage);
     
     if($CurrentPage > $TotalPages) {
         $GLOBALS['theme']->AddContent('Search Results', '<div class="message error">'.$GLOBALS['trans'][2011].'</div>', '', 'search-results');
     } else {
-        $Paginate_Limit = intval(($CurrentPage - 1) * $PerPage);
+        $PaginateLimit = intval(($CurrentPage - 1) * $PerPage);
 
-        $PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PUNISHMENTS.$QueryString.' ORDER BY Punish_Time DESC LIMIT '.$Paginate_Limit.', '.$PerPage);
+        /* Fetch punishments matching criteria */ 
+        $PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PUNISHMENTS.$QueryString.' ORDER BY Punish_Time DESC LIMIT '.$PaginateLimit.', '.$PerPage);
         $Rows = array();
         while($PunishRow = $GLOBALS['sql']->FetchArray($PunishQuery)) {
             $Rows[] = $PunishRow;
         }
         $GLOBALS['sql']->Free($PunishQuery);
+
+        /* Check if any punishments matching the criteria exist */
         if(count($Rows) == 0) {
             $Content = '<div class="message error">'.$GLOBALS['trans'][2011].'</div>';
         } else {
-            $Content = $GLOBALS['theme']->BuildPunishTable($Rows);
+            $Content = BuildPunishTable($Rows);
         }
         unset($Rows);
+
+        /* Add main content to page */
         $GLOBALS['theme']->AddContent(ucwords(sprintf($GLOBALS['trans'][1157], number_format($CurrentPage), number_format($TotalPages))), $Content, '', 'search-results');
+        /* Add pagination links to page */
         $GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^search&'.http_build_query($Criteria)).'&p='));
     }
 }

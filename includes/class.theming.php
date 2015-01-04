@@ -158,51 +158,6 @@ class Theming {
         else
             $this->Content .= DefaultTheme_AddContent($Array);
     }
-    public function BuildPunishTable($Rows, $Class = 'table-punish', $ID = '') {
-        $Table = array('headings'=>array(), 'rows'=>array(), 'class'=>$Class, 'id'=>$ID);
-        $Table['headings'] = array(
-            array('content'=>ParseText('#TRANS_1100'), 'class'=>'col-date'),
-            array('content'=>ParseText('#TRANS_1101'), 'class'=>'col-server'),
-            array('content'=>ParseText('#TRANS_1102'), 'class'=>'col-player'),
-            array('content'=>ParseText('#TRANS_1103'), 'class'=>'col-type'),
-            array('content'=>ParseText('#TRANS_1104'), 'class'=>'col-reason'),
-            array('content'=>ParseText('#TRANS_1105'), 'class'=>'col-length')
-        );
-        foreach($Rows as $Row) {
-            $Server = GetServerInfo($Row['Punish_Server_ID']);
-            $Class = '';
-            $ATime = array();
-            $Time = PunishTime($Row['Punish_Length']);
-            if($Row['UnPunish'] == 1) {
-                $ATime = array('content'=>ParseText('#TRANS_1140'), 'custom'=>'title="'.ParseText('#TRANS_1140').'"', 'class'=>'removed');
-                $Class = 'removed';
-            } else if(($Row['Punish_Time']+($Row['Punish_Length']*60) < time()) && $Row['Punish_Length'] > 0) {
-                $ATime = array('content'=>$Time, 'custom'=>'title="'.ParseText('#TRANS_1139').'"', 'class'=>'expired');
-                $Class = 'expired';
-            } else if(($Row['Punish_Length'] == 0 && $Row['Punish_Type'] == 'kick') || $Row['Punish_Length'] == -1) {
-                $ATime = array('content'=>PunishTime(-1), 'class'=>'notapplicable');
-                $Class = 'notapplicable';
-            } else if($Row['Punish_Length'] == 0) {
-                $ATime = array('content'=>$Time, 'class'=>'permanent');
-                $Class = 'permanent';
-            } else {
-                $ATime = array('content'=>$Time, 'custom'=>'title="'.ParseText('#TRANS_1158').'"', 'class'=>'active');
-                $Class = 'active';
-            }
-            unset($Time);
-            $Table['rows'][] = array('class'=>$Class,
-            'cols'=>array(
-                array('content'=>sprintf(ParseText('#TRANS_3003'), ucwords(PrintTimeDiff(TimeDiff(time()-$Row['Punish_Time']), 1))), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
-                array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'),
-                array('content'=>htmlspecialchars($Row['Punish_Player_Name'])),
-                array('content'=>htmlspecialchars(ucwords($Row['Punish_Type']))),
-                array('content'=>htmlspecialchars($Row['Punish_Reason'])),
-                $ATime
-            ), 'custom'=>'data-pid="'.$Row['Punish_ID'].'"');
-            unset($ATime);
-        }
-        return $this->BuildTable($Table);
-    }
     public function BuildTable($Array) {
         $Build = array();
         if(isset($Array['id']) && $Array['id'] != '')

@@ -23,7 +23,7 @@ if(!defined('IN_SP')) die('Access Denied!');
 $GLOBALS['theme']->AddTitle('Punishment Information');
 
 /* Check that the ID variable is set and valid */
-if(isset($_GET['id']) && $_GET['id'] != '' && IsNum($_GET['id']) && $_GET['id'] > 0)
+if(isset($_GET['id']) && CheckVar($_GET['id'], SP_VAR_INT))
     $ID = intval($GLOBALS['sql']->Escape($_GET['id']));
 else 
     Redirect();
@@ -55,7 +55,7 @@ if($Buttons != '')
     $Buttons = '<span class="action-buttons">'.$Buttons.'</span>';
 
 /* Create table for player information */
-$PlayerInfo = array('class'=>'table-view table-view-player', 'rows'=>array());
+$PlayerInfo = array('class'=>'table-view table-view-player table-format-data', 'rows'=>array());
 $PlayerInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1123]), array('content'=>htmlspecialchars($Punishment['Punish_Player_Name'])))); unset($Punishment['Punish_Player_Name']);
 $PlayerInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1124]), array('content'=>htmlspecialchars($Punishment['Punish_Player_ID'])))); unset($Punishment['Punish_Player_Name']);
 /* Check if Punish_Player_ID is a valid SteamID and create a profile link */
@@ -86,8 +86,8 @@ $GLOBALS['theme']->AddContent($GLOBALS['trans'][1120].$Buttons, $PlayerInfoTable
 unset($PlayerInfoTable);
 
 /* Create table for punishment information */
-$PunishInfo = array('class'=>'table-view table-view-server', 'rows'=>array());
-$PunishInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1125]), array('content'=>htmlspecialchars(date(DATE_FORMAT, $Punishment['Punish_Time']).sprintf(ParseText(' (#TRANS_3003)'), ucwords(PrintTimeDiff(TimeDiff(time()-$Punishment['Punish_Time']), -1)))))));
+$PunishInfo = array('class'=>'table-view table-view-server table-format-data', 'rows'=>array());
+$PunishInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1125]), array('content'=>htmlspecialchars(date(DATE_FORMAT, $Punishment['Punish_Time']).sprintf(ParseText(' (#TRANS_3003)'), PrintTimeDiff(TimeDiff(time()-$Punishment['Punish_Time']), -1))))));
 $PunishInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1103]), array('content'=>htmlspecialchars(ucwords($Punishment['Punish_Type'])))));
 $PunishInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1104]), array('content'=>htmlspecialchars($Punishment['Punish_Reason'])))); unset($Punishment['Punish_Reason']);
 /* Work out punishment status */
@@ -111,7 +111,7 @@ $PunishInfo['rows'][] = array('class'=>$Class, 'cols'=>array(array('content'=>$G
 unset($Punishment['Punish_Type'], $Status, $Class);
 /* Work out expiry date */
 if($Punishment['Punish_Length'] > 0)
-    $PunishInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1130]), array('content'=>htmlspecialchars(date(DATE_FORMAT, ($Punishment['Punish_Time']+($Punishment['Punish_Length']*60))))))); unset($Punishment['Punish_Length'], $Punishment['Punish_Time']);
+    $PunishInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1130]), array('content'=>htmlspecialchars(date(DATE_FORMAT, ($Punishment['Punish_Time']+($Punishment['Punish_Length']*60))).' - ('.PrintTimeDiff(TimeDiff(($Punishment['Punish_Time']+($Punishment['Punish_Length']*60))-time()), -1).' Left)')))); unset($Punishment['Punish_Length'], $Punishment['Punish_Time']);
 unset($Punishment['Punish_Length'], $Punishment['Punish_Time']);
 /* Get server info */
 $ServerInfo = GetServerInfo($Punishment['Punish_Server_ID']); unset($Punishment['Punish_Server_ID']);
@@ -135,7 +135,7 @@ $GLOBALS['theme']->AddContent($GLOBALS['trans'][1121], $PunishInfoTable);
 unset($PunishInfoTable);
 
 /* Create table for admin information */
-$AdminInfo = array('class'=>'table-view table-view-admin', 'rows'=>array());
+$AdminInfo = array('class'=>'table-view table-view-admin table-format-data', 'rows'=>array());
 $AdminInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1123]), array('content'=>htmlspecialchars($Punishment['Punish_Admin_Name'])))); unset($Punishment['Punish_Admin_Name']);
 $AdminInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1124]), array('content'=>htmlspecialchars($Punishment['Punish_Admin_ID'])))); unset($Punishment['Punish_Admin_ID']);
 /* Build admin information table and add it to the page */
@@ -146,7 +146,7 @@ unset($AdminInfoTable);
 
 /* Create table for removal information */
 if($Punishment['UnPunish'] == 1) {
-    $RemoverInfo = array('class'=>'table-view table-view-removal', 'rows'=>array());
+    $RemoverInfo = array('class'=>'table-view table-view-removal table-format-data', 'rows'=>array());
     $RemoverInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1125]), array('content'=>htmlspecialchars(date(DATE_FORMAT, $Punishment['UnPunish_Time']).sprintf(ParseText(' (#TRANS_3003)'), ucwords(PrintTimeDiff(TimeDiff(time()-$Punishment['UnPunish_Time']), -1))))))); unset($Punishment['UnPunish_Time']);
     $RemoverInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1104]), array('content'=>htmlspecialchars($Punishment['UnPunish_Reason'])))); unset($Punishment['UnPunish_Reason']);
     $RemoverInfo['rows'][] = array('cols'=>array(array('content'=>$GLOBALS['trans'][1123]), array('content'=>htmlspecialchars($Punishment['UnPunish_Admin_Name'])))); unset($Punishment['UnPunish_Admin_Name']);

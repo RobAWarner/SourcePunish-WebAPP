@@ -92,6 +92,20 @@
     color: #fff;
 }
 
+/* Colours */
+.expired, .accepted {
+    color: #2A9E00;
+}
+.notapplicable, .removed, .review {
+    color: #00A1D6;
+}
+.permanent, .declined {
+    color: #ff5a5a;
+}
+.active, .new{
+    color: #FF9D00;
+}
+
 
 /* Tables */
 table.table-search {
@@ -102,6 +116,7 @@ table.table-search {
 table.table-search tr td:first-child {
     width: 150px;
 }
+
 table.table-punish .col-date {
     width: 120px;
 }
@@ -117,6 +132,7 @@ table.table-punish .col-type {
 table.table-punish .col-length {
     width: 180px;
 }
+
 table.table-servers .col-vac,
 table.table-servers .col-mod {
     width: 35px;
@@ -130,6 +146,17 @@ table.table-servers .col-map {
 table.table-servers .col-length {
     width: 180px;
 }
+
+table.table-format-data tbody tr td {
+    text-align: left;
+    padding: 10px;
+}
+table.table-format-data tbody tr td:first-child {
+    text-align: center;
+    width: 300px;
+    font-weight: bold;
+}
+
 table.table-view tr.expired td:nth-child(2),
 table.table-punish tr.expired td:nth-child(6) {
     color: #2A9E00;

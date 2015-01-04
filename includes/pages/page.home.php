@@ -13,26 +13,26 @@
 +--------------------------------------------------------*/
 if(!defined('IN_SP')) die('Access Denied!');
 
-/* BBCode Test */
-/*$X = ParseText('[center][url=http://cake.com][img]http://monsterprojects.org/images/logo.png[/img][/url][br][s]cake[/s][/center]', true, true);
-echo $X;*/
-
+/* Get site introduction */
 $Intro = GetCustomPage('home_intro');
 $GLOBALS['theme']->AddContent($Intro['title'], $Intro['content']);
 unset($Intro);
 
-/* Recent Punishments */
-$PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PREFIX.'punishments ORDER BY Punish_Time DESC LIMIT 25');
+/* Recent punishments */
+$PunishQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PUNISHMENTS.' ORDER BY Punish_Time DESC LIMIT 25');
 $Rows = array();
 while($PunishRow = $GLOBALS['sql']->FetchArray($PunishQuery)) {
     $Rows[] = $PunishRow;
 }
 $GLOBALS['sql']->Free($PunishQuery);
-if(count($Rows) == 0) {
-    $Content = ParseText('#TRANS_2011');
-} else {
-    $Content = $GLOBALS['theme']->BuildPunishTable($Rows);
-}
+
+/* Chec if any punishments exist */
+if(count($Rows) == 0)
+    $Content = $GLOBALS['trans'][2011];
+else
+    $Content = BuildPunishTable($Rows);
 unset($Rows);
-$GLOBALS['theme']->AddContent(ucwords(ParseText('#TRANS_1156')), $Content);
+
+/* Add main content to page */
+$GLOBALS['theme']->AddContent(ucwords($GLOBALS['trans'][1156]), $Content);
 ?>
