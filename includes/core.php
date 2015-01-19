@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -20,6 +20,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     - Config for timezone
     - ParseText use flags?
     - IsValidIP to CheckVar?
+    - Split translations into pages and add SP_LoadTranslations($Name) ?
 */
 
 /* Site definitions */
@@ -45,19 +46,22 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     else
         define('IS32BIT', false);
 
-/* Show PHP errors for development purposes */
-    if(isset($GLOBALS['config']['system']['phperrors']) && $GLOBALS['config']['system']['phperrors'] == true) {
-        error_reporting(E_ALL);
-        ini_set('display_errors', '1');
-    }
-
 /* Set shutdown function */
-    register_shutdown_function('ScriptShutdown');
+    register_shutdown_function('SP_ScriptShutdown');
 
 /* Load the configuration file */
     require_once('includes/config.php');
     if(!isset($GLOBALS['config']))
         die('Error: Configuration(s) missing in file config.php');
+
+/* Show PHP errors for development purposes */
+    if(isset($GLOBALS['config']['system']['phperrors']) && $GLOBALS['config']['system']['phperrors'] == true) {
+        error_reporting(E_ALL);
+        ini_set('display_errors', '1');
+    } else {
+        error_reporting(0);
+        ini_set('display_errors', '0');
+    }
 
 /* PHP Paths */
     if(isset($GLOBALS['config']['system']['path_php']) && !empty($GLOBALS['config']['system']['path_php'])) {
@@ -162,7 +166,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     if(!defined('USER_ADMIN')) define('USER_ADMIN', false);
     if(!defined('USER_SUPERADMIN')) define('USER_SUPERADMIN', false);
     if(!defined('USER_LOGGEDIN')) define('USER_LOGGEDIN', false);
-    PrintDebug('Auth Class Loaded'.(USER_LOGGEDIN?' & Checked as \''.$GLOBALS['auth']->GetUserID().'\'':''));
+    PrintDebug('Auth Class Loaded'.(USER_LOGGEDIN?' & Checked as \''.$GLOBALS['auth']->GetUser64().'\'':''));
 
 /* Check & load main site theme */
     $ThemeName = $GLOBALS['settings']['site_theme'];
@@ -256,7 +260,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 
 /* Main site functions */
     /* Function to run at the end of script execution */
-    function ScriptShutdown() {
+    function SP_ScriptShutdown() {
         $GLOBALS['sql']->Close();
         PrintDebug('End, PEAK MEM:'.number_format(memory_get_peak_usage()).'B');
     }
@@ -378,9 +382,38 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
         }
         return $Text;
     }
+    
+    /* Parse a user input and remove unneeded space, characters, html etc */
+    function ParseUserInput($Text, $Limit = 0, $Flags = 0) {
+        if(!($Flags & SP_INPUT_NOTRIM))
+            $Text = trim($Text);
+        if($Limit > 0)
+            $Text = substr($Text, 0, $Limit);
+        if(!($Flags & SP_INPUT_HTML))
+            $Text = SpecialChars($Text);
+        if($Flags & SP_INPUT_ESCAPE)
+            $Text = $GLOBALS['sql']->Escape($Text);
+
+        return $Text;
+    }
+
+    /* Get GeoIP country information for IP address */
+    function SP_GeoIPCountry($IP) {
+        if(!IsValidIP($IP, 'ipv4'))
+            return false;
+        $IP = $GLOBALS['sql']->Escape($IP);
+        $CountryInfo = array();
+        $GeoIPQuery = $GLOBALS['sql']->Query_FetchArray('SELECT geoip_country_code, geoip_country FROM '.SQL_GEOIP.' WHERE INET_ATON(\''.$IP.'\') BETWEEN geoip_locid_start AND geoip_locid_end LIMIT 1');
+        if(empty($GeoIPQuery) || !isset($GeoIPQuery['geoip_country_code'], $GeoIPQuery['geoip_country']))
+            return false;
+        $CountryInfo['country'] = $GeoIPQuery['geoip_country'];
+        $CountryInfo['country_code'] = $GeoIPQuery['geoip_country_code'];
+        $CountryInfo['country_flag'] = HTML_IMAGES_FLAGS.strtolower($CountryInfo['country_code']).'.png';
+        return $CountryInfo;
+    }
 
     /* Format & build a tabling containing a punishment list */
-    function BuildPunishTable($Rows, $Class = 'table-punish', $ID = '') {
+    function SP_BuildPunishTable($Rows, $Class = 'table-punish', $ID = '') {
         $Table = array('headings'=>array(), 'rows'=>array(), 'class'=>$Class, 'id'=>$ID);
         $Table['headings'] = array(
             array('content'=>ucfirst($GLOBALS['trans'][1100]), 'class'=>'col-date'),
@@ -391,15 +424,15 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
             array('content'=>ucfirst($GLOBALS['trans'][1105]), 'class'=>'col-length')
         );
         foreach($Rows as $Row) {
-            $Server = GetServerInfo($Row['Punish_Server_ID']);
+            $Server = SP_GetServerInfo($Row['Punish_Server_ID']);
             $ATime = array();
-            $Time = ucfirst(PunishTime($Row['Punish_Length']));
+            $Time = SP_LengthString($Row['Punish_Length']);
             if($Row['UnPunish'] == 1) {
                 $ATime = array('content'=>ucfirst($GLOBALS['trans'][1140]), 'custom'=>'title="'.ucfirst($GLOBALS['trans'][1140]).'"', 'class'=>'removed');
             } else if(($Row['Punish_Time']+($Row['Punish_Length']*60) < time()) && $Row['Punish_Length'] > 0) {
                 $ATime = array('content'=>$Time, 'custom'=>'title="'.ucfirst($GLOBALS['trans'][1139]).'"', 'class'=>'expired');
             } else if(($Row['Punish_Length'] == 0 && $Row['Punish_Type'] == 'kick') || $Row['Punish_Length'] == -1) {
-                $ATime = array('content'=>PunishTime(-1), 'class'=>'notapplicable');
+                $ATime = array('content'=>SP_LengthString(-1), 'class'=>'notapplicable');
             } else if($Row['Punish_Length'] == 0) {
                 $ATime = array('content'=>$Time, 'class'=>'permanent');
             } else {
@@ -407,7 +440,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
             }
             unset($Time);
             $Table['rows'][] = array('cols'=>array(
-                array('content'=>sprintf($GLOBALS['trans'][3003], ucwords(PrintTimeDiff(TimeDiff(time()-$Row['Punish_Time']), 1))), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
+                array('content'=>sprintf($GLOBALS['trans'][3003], ucwords(SP_PrintTimeDiff(SP_TimeDiff(time()-$Row['Punish_Time']), 1))), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
                 array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'),
                 array('content'=>SpecialChars($Row['Punish_Player_Name'])),
                 array('content'=>SpecialChars(ucwords($Row['Punish_Type']))),
@@ -420,18 +453,18 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Check if a custom page exists */
-    function CustomPageExists($Ref) {
+    function SP_CustomPageExists($Ref) {
         $PageRef = $GLOBALS['sql']->Escape($Ref);
-        $PageQuery = $GLOBALS['sql']->Query_Rows('SELECT page_ref FROM '.SQL_PREFIX.'pages WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
+        $PageQuery = $GLOBALS['sql']->Query_Rows('SELECT page_ref FROM '.SQL_PAGES.' WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
         if($PageQuery == 1)
             return true;
         return false;
     }
 
     /* Get the content of a custom page */
-    function GetCustomPage($Ref) {
+    function SP_GetCustomPage($Ref) {
         $PageRef = $GLOBALS['sql']->Escape($Ref);
-        $PageQuery = $GLOBALS['sql']->Query_FetchArray('SELECT * FROM '.SQL_PREFIX.'pages WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
+        $PageQuery = $GLOBALS['sql']->Query_FetchArray('SELECT * FROM '.SQL_PAGES.' WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
         if(HasAuthLevel($PageQuery['page_auth'])) {
             $PageQuery['title'] = ParseText($PageQuery['page_title']);
             unset($PageQuery['page_title']);
@@ -447,7 +480,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Get information on a given server */
-    function GetServerInfo($ServerID, $ReturnUnknow = true) {
+    function SP_GetServerInfo($ServerID, $ReturnUnknow = true) {
         if(isset($GLOBALS['varcache']['servers'][$ServerID]))
             return $GLOBALS['varcache']['servers'][$ServerID];
         if($ServerID == 0) {
@@ -494,7 +527,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Return server IP & port from an address string */
-    function GetAddressFromString($Address) {
+    function SP_GetAddressFromString($Address) {
         $Addr['port'] = 27015;
         $Addr['address'] = $Address;
         /* Get port number */
@@ -508,19 +541,24 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Get formatted punishment length string */
-    function PunishTime($Time, $Count = 1) {
+    function SP_LengthString($Time, $Count = 1) {
         if($Time == -1)
-            return $GLOBALS['trans'][3007];
+            return ucfirst($GLOBALS['trans'][3007]);
         else if($Time == 0)
-            return $GLOBALS['trans'][1141];
-        $GetTime = TimeDiff($Time*60, true);
-        return PrintTimeDiff($GetTime, $Count, true);
+            return ucfirst($GLOBALS['trans'][1141]);
+        $GetTime = SP_TimeDiff($Time*60, true);
+        return SP_PrintTimeDiff($GetTime, $Count, true);
     }
 
     /* Time ago calculation */ 
-    function TimeDiff($FTime, $Trans = true) {
+    function SP_TimeDiff($FTime, $Trans = true) {
         $Time = (int)$FTime;
         $TimeArray = array();
+
+        if($Time < 1) {
+            $TimeArray[($Trans?1154:'second')] = 0;
+            return $TimeArray;
+        }
 
         if($Time > 31556900) {
             $TimeArray[($Trans?1142:'year')] = floor($Time / 31556900);
@@ -553,7 +591,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Print 'TimeDiff' as human readable time */
-    function PrintTimeDiff($TimeAgo, $Count = 0, $Trans = true) {
+    function SP_PrintTimeDiff($TimeAgo, $Count = 0, $Trans = true) {
         $TimeString = '';
         $i = 1;
         if($Count < 0) {
@@ -563,15 +601,16 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
                 $Count = count($TimeAgo) + $Count;
         }
         foreach($TimeAgo as $STime => $Time) {
-            if($Time > 0) {
+            /*f($Time > 0) {*/
+            if(true) {
                 if($i > 1)
                     $TimeString .= ', ';
                 if($Trans)
-                    $TimeString .= $Time.' '.(($Time>1)?$GLOBALS['trans'][$STime+1]:$GLOBALS['trans'][$STime]);
+                    $TimeString .= $Time.' '.(($Time>1 || $Time==0)?$GLOBALS['trans'][$STime+1]:$GLOBALS['trans'][$STime]);
                 else
-                    $TimeString .= $Time.' '.(($Time>1)?$STime.'s':$STime);
+                    $TimeString .= $Time.' '.(($Time>1 || $Time==0)?$STime.'s':$STime);
                 if($Count != 0 && $i >= $Count)
-                    return $TimeString;
+                    return ucfirst($TimeString);
                 $i++;
             }
         }
@@ -579,7 +618,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Get appeal status text */
-    function AppealStatusText($StatusCode) {
+    function SP_AppealStatusText($StatusCode) {
         $Text = '';
         switch($StatusCode) {
             case 0: $Text = $GLOBALS['trans'][1505]; break;

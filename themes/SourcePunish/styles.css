@@ -218,7 +218,8 @@ tbody tr:hover {
 
 
 /* Forms */
-form select, 
+form select,
+form textarea,
 form input {
     border: 1px solid #8C8C8C;
     border-radius: 2px;
@@ -231,6 +232,8 @@ form input[type=text] {
 }
 form select:hover,
 form select:focus,
+form textarea:hover,
+form textarea:focus,
 form input:hover,
 form input:focus {
     border: 1px solid #575757;
@@ -245,6 +248,10 @@ form input[type=submit] {
     color: #000;
     background: #fff;
     cursor: pointer;
+}
+form textarea.input-textarea-large {
+    width: 95%;
+    height: 60px;
 }
 form .small {
     width: 50px !important;

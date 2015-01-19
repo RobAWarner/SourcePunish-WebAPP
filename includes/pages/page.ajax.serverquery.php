@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -54,7 +54,7 @@ if($Type == 'serverlist') {
         $ServerList = array();
         if($GLOBALS['sql']->Rows($ServerListQuery) > 0) {
             while($Row = $GLOBALS['sql']->FetchArray($ServerListQuery)) {
-                $IP = GetAddressFromString($Row['Server_IP']);
+                $IP = SP_GetAddressFromString($Row['Server_IP']);
                 $ServerList[$Row['Server_ID']] = array('ip'=>$IP['address'], 'port'=>$IP['port']);
             }
         }
@@ -86,12 +86,12 @@ if($Type == 'serverlist') {
 } else if($Type = 'playerlist') {
     if(isset($_GET['id']) && $_GET['id'] != '' && IsNum($_GET['id']) && $_GET['id'] > 0) {
         $ID = intval($GLOBALS['sql']->Escape($_GET['id']));
-        $ServerInfo = GetServerInfo($ID, false);
+        $ServerInfo = SP_GetServerInfo($ID, false);
         if($ServerInfo !== false) {
             require_once(DIR_INCLUDE.'class.serverquery.php');
             $ServerQuery = new ServerQuery();
 
-            $IP = GetAddressFromString($ServerInfo['ip']);
+            $IP = SP_GetAddressFromString($ServerInfo['ip']);
             if(empty($IP['address']))
                 die('{"success":false}');
             $ServerQuery->Connect($IP['address'], $IP['port']);
@@ -106,7 +106,7 @@ if($Type == 'serverlist') {
                 array('content'=>$GLOBALS['trans'][1213], 'class'=>'col-time')
             );
             foreach($GetPlayers as $Player) {
-                $Table['rows'][] = array('cols'=>array(array('content'=>SpecialChars($Player['name'])), array('content'=>SpecialChars($Player['score'])), array('content'=>SpecialChars(PrintTimeDiff(TimeDiff($Player['time']))))));
+                $Table['rows'][] = array('cols'=>array(array('content'=>SpecialChars($Player['name'])), array('content'=>SpecialChars($Player['score'])), array('content'=>SpecialChars(SP_PrintTimeDiff(SP_TimeDiff($Player['time']))))));
             }
             $AjaxList['players'] = $GLOBALS['theme']->BuildTable($Table);
             $Json = $GLOBALS['cache']->Encode($AjaxList);

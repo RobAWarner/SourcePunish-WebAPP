@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -15,7 +15,7 @@ if(!defined('IN_SP')) die('Access Denied!');
 
 /* TODO
     - Active menu items
-    - Top stats
+    - Tables: Instead if 'custom', 'id', 'class' have 'attr' array
 */
 
 class Theming {
@@ -29,7 +29,10 @@ class Theming {
     private $Content = '';
 
     public function __construct() {
-        $this->Title = htmlspecialchars($GLOBALS['settings']['site_title']);
+        if(isset($GLOBALS['settings']['site_title']) && $GLOBALS['settings']['site_title'] != '')
+            $this->Title = htmlspecialchars($GLOBALS['settings']['site_title']);
+        else
+            $this->Title = SP_WEB_NAME;
     }
     public function AddTitle($Text) {
         PrintDebug('Called Theming->AddTitle', 2);
@@ -157,6 +160,25 @@ class Theming {
             $this->Content .= Theme_AddContent($Array);
         else
             $this->Content .= DefaultTheme_AddContent($Array);
+    }
+    public function FormatContent($Title = '', $Content, $Classes = '', $ID = '') {
+        PrintDebug('Called Theming->FormatContent', 2);
+        $Array = array('content'=>$Content);
+        if($Title != '') $Array['title'] = $Title;
+        if($Classes != '') $Array['class'] = $Classes;
+        if($ID != '') $Array['id'] = $ID;
+        $Content = '';
+        if(function_exists('Subtheme_AddContent'))
+            $Content .= Subtheme_AddContent($Array);
+        else if(function_exists('Theme_AddContent'))
+            $Content .= Theme_AddContent($Array);
+        else
+            $Content .= DefaultTheme_AddContent($Array);
+        return $Content;
+    }
+    public function AddContentRaw($Content) {
+        PrintDebug('Called Theming->AddContentRaw', 2);
+        $this->Content .= $Content;
     }
     public function BuildTable($Array) {
         $Build = array();

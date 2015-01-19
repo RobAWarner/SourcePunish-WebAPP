@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -19,7 +19,7 @@ if(!defined('IN_SP')) die('Access Denied!');
     $GLOBALS['trans'][1003] = 'View All';
     $GLOBALS['trans'][1004] = 'Search';
     $GLOBALS['trans'][1005] = 'My Punishments';
-    $GLOBALS['trans'][1006] = 'Appeal A Punishments';
+    $GLOBALS['trans'][1006] = 'Appeal A Punishment';
     $GLOBALS['trans'][1007] = 'Servers';
     $GLOBALS['trans'][1008] = 'Stats';
     $GLOBALS['trans'][1009] = 'Login';
@@ -80,6 +80,10 @@ if(!defined('IN_SP')) die('Access Denied!');
     $GLOBALS['trans'][1162] = 'Every server';
     $GLOBALS['trans'][1163] = 'Appeal this punishment';
     $GLOBALS['trans'][1164] = 'Edit this punishment';
+    $GLOBALS['trans'][1165] = 'Previous punishments';
+    $GLOBALS['trans'][1166] = 'Delete Record';
+    $GLOBALS['trans'][1167] = 'Unpunish';
+    $GLOBALS['trans'][1168] = 'Reinstate';
 /* Servers */
     $GLOBALS['trans'][1200] = 'Mod';
     $GLOBALS['trans'][1201] = 'Server Address';
@@ -133,7 +137,7 @@ if(!defined('IN_SP')) die('Access Denied!');
     $GLOBALS['trans'][1419] = 'Remover ID';
     $GLOBALS['trans'][1420] = 'Removal reason';
 /* Appeals */
-    $GLOBALS['trans'][1500] = 'Appeal created'; // 'Date/Time'
+    $GLOBALS['trans'][1500] = 'Appeal created';
     $GLOBALS['trans'][1501] = 'Appeal reason';
     $GLOBALS['trans'][1502] = 'Current status';
     $GLOBALS['trans'][1503] = 'Original punishment';
@@ -147,6 +151,9 @@ if(!defined('IN_SP')) die('Access Denied!');
     $GLOBALS['trans'][1511] = $GLOBALS['trans'][1403]; // 'Admin name'
     $GLOBALS['trans'][1512] = 'Decision reason';
     $GLOBALS['trans'][1513] = 'View original punishment';
+    $GLOBALS['trans'][1514] = 'Please explain why you wish to appeal this punishment';
+    $GLOBALS['trans'][1515] = 'I agree the above information is correct and understand that appeals are subject to review';
+    $GLOBALS['trans'][1516] = 'Decision date';
 /* System */
     $GLOBALS['trans'][2001] = '';
     $GLOBALS['trans'][2009] = 'Redirecting page to %s';
@@ -155,7 +162,7 @@ if(!defined('IN_SP')) die('Access Denied!');
 /* Other */
     $GLOBALS['trans'][3001] = 'Login through Steam';
     $GLOBALS['trans'][3002] = 'Visit %s';
-    $GLOBALS['trans'][3003] = '%s Ago';
+    $GLOBALS['trans'][3003] = '%s ago';
     $GLOBALS['trans'][3004] = 'Unknown';
     $GLOBALS['trans'][3005] = 'Web';
     $GLOBALS['trans'][3006] = 'Web console';
@@ -164,4 +171,6 @@ if(!defined('IN_SP')) die('Access Denied!');
     $GLOBALS['trans'][3009] = '%s and %s';
     $GLOBALS['trans'][3010] = 'View more';
     $GLOBALS['trans'][3011] = 'Go back';
+    $GLOBALS['trans'][3012] = '%s left';
+    $GLOBALS['trans'][3013] = 'Submit';
 ?>

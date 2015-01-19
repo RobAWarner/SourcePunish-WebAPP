@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -224,7 +224,7 @@ unset($Queries);
 $ServerListQuery = $GLOBALS['sql']->Query('SELECT Server_ID FROM '.SQL_SERVERS);
 $Servers = array();
 while($Row = $GLOBALS['sql']->FetchArray($ServerListQuery)) {
-    $Server = GetServerInfo($Row['Server_ID']);
+    $Server = SP_GetServerInfo($Row['Server_ID']);
     $Servers[$Server['mod']['name']][$Row['Server_ID']] = $Server['name'];
 }
 $GLOBALS['sql']->Free($ServerListQuery);
@@ -321,7 +321,7 @@ if($QueryString != '') {
         if(count($Rows) == 0) {
             $Content = '<div class="message error">'.$GLOBALS['trans'][2011].'</div>';
         } else {
-            $Content = BuildPunishTable($Rows);
+            $Content = SP_BuildPunishTable($Rows);
         }
         unset($Rows);
 

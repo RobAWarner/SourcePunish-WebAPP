@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -18,6 +18,9 @@ if(!defined('IN_SP')) die('Access Denied!');
     - Setting Cats?
     - List Servers/Current players - Place punishment quick?
 */
+
+if(!USER_ADMIN)
+    Redirect();
 
 $PageQuery = isset($_GET['a'])?$_GET['a']:$GLOBALS['settings']['admin_index'];
 switch($PageQuery) {

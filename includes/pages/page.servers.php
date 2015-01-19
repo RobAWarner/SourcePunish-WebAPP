@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -24,7 +24,7 @@ if(!defined('IN_SP')) die('Access Denied!');
 /* Check if an ID variable is set and valid */
 if(isset($_GET['id']) && $_GET['id'] != '' && IsNum($_GET['id']) && $_GET['id'] > 0) {
     $ID = intval($GLOBALS['sql']->Escape($_GET['id']));
-    $ServerInfo = GetServerInfo($ID, false);
+    $ServerInfo = SP_GetServerInfo($ID, false);
     if($ServerInfo === false)
         Redirect('^servers');
     else {
@@ -41,7 +41,7 @@ if(isset($_GET['id']) && $_GET['id'] != '' && IsNum($_GET['id']) && $_GET['id'] 
     $ServerListQuery = $GLOBALS['sql']->Query('SELECT Server_ID from '.SQL_PREFIX.'servers ORDER BY Server_Mod ASC');
     $Servers = array();
     while($Row = $GLOBALS['sql']->FetchArray($ServerListQuery)) {
-        $Server = GetServerInfo($Row['Server_ID']);
+        $Server = SP_GetServerInfo($Row['Server_ID']);
         $Servers[$Row['Server_ID']] = $Server;
     }
     $GLOBALS['sql']->Free($ServerListQuery);
@@ -53,10 +53,13 @@ if(isset($_GET['id']) && $_GET['id'] != '' && IsNum($_GET['id']) && $_GET['id'] 
         array('content'=>$GLOBALS['trans'][1202], 'class'=>'col-name'),
         array('content'=>$GLOBALS['trans'][1201], 'class'=>'col-address'),
         array('content'=>$GLOBALS['trans'][1203], 'class'=>'col-players'),
-        array('content'=>$GLOBALS['trans'][1204], 'class'=>'col-map')
+        array('content'=>$GLOBALS['trans'][1204], 'class'=>'col-map'),
+        array('content'=>'', 'class'=>'col-loc')
     );
     foreach($Servers as $ID=>$Server) {
-        $ServerTable['rows'][] = array('custom'=>'data-sid="'.$ID.'"', 'cols'=>array(array('content'=>'<img alt="VAC" title="Valve Anti-Cheat Secure" src="'.HTML_IMAGES.'vac.png" />'), array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['mod']['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'), array('content'=>htmlspecialchars($Server['name'])), array('content'=>'<a href="steam://connect/'.$Server['host'].'" title="'.$GLOBALS['trans'][1208].'">'.htmlspecialchars($Server['host']).'</a>'), array('content'=>'-'), array('content'=>'-')));
+        $IP = SP_GetAddressFromString($Server['ip']);
+        $GeoIP = SP_GeoIPCountry($IP['address']);
+        $ServerTable['rows'][] = array('custom'=>'data-sid="'.$ID.'"', 'cols'=>array(array('content'=>'<img alt="VAC" title="Valve Anti-Cheat Secure" src="'.HTML_IMAGES.'vac.png" />'), array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['mod']['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'), array('content'=>htmlspecialchars($Server['name'])), array('content'=>'<a href="steam://connect/'.$Server['host'].'" title="'.$GLOBALS['trans'][1208].'">'.htmlspecialchars($Server['host']).'</a>'), array('content'=>'-'), array('content'=>'-'), array('content'=>($GeoIP!==false?'<img alt="'.$GeoIP['country_code'].'" title="'.$GeoIP['country'].'" src="'.$GeoIP['country_flag'].'" />':'')), ));
     }
     unset($Servers);
     $ServerTable = $GLOBALS['theme']->BuildTable($ServerTable);

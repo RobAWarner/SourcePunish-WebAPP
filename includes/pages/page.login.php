@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -33,16 +33,10 @@ if($_GET['q'] == 'logout') {
             $TestLogin = $GLOBALS['auth']->ValidateLogin();
             if($TestLogin === FALSE)
                 Redirect('^login');
-            if(!IS32BIT) {
-                if(!$GLOBALS['steam']->Valid64($TestLogin))
-                    Redirect('^login');
-            }
-            $GetSteamID = $GLOBALS['steam']->Steam64ToID($TestLogin);
-            if($GetSteamID !== false && $GLOBALS['steam']->ValidID($GetSteamID)) {
-                $GLOBALS['auth']->SetSession($GetSteamID);
-                Redirect('^');
-            } else
+            if(!$GLOBALS['steam']->Valid64($TestLogin))
                 Redirect('^login');
+            $GLOBALS['auth']->SetSession($TestLogin);
+            Redirect('^');
         }
         $Title = $GLOBALS['trans'][3001];
         $GetLoginButton = '<div class="center"><a href="'.$GLOBALS['auth']->GetLoginURL().'" title="'.$Title.'" class="steam-openid-button">';

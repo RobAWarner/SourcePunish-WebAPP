@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -34,6 +34,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 /* HTML paths */
     define('HTML_IMAGES', HTML_ROOT.'static/images/');
     define('HTML_IMAGES_GAMES', HTML_IMAGES.'games/');
+    define('HTML_IMAGES_FLAGS', HTML_IMAGES.'flags/');
     define('HTML_SCRIPTS', HTML_ROOT.'static/scripts/');
     define('HTML_CSS', HTML_ROOT.'static/css/');
     define('URL_PAGE', 'index.php');
@@ -41,6 +42,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 
 /* MySQL definitions */
     define('SQL_APPEALS', SQL_PREFIX.'appeals');
+    define('SQL_GEOIP', SQL_PREFIX.'maxmind_geoip');
     define('SQL_NAVIGATION', SQL_PREFIX.'navigation');
     define('SQL_PAGES', SQL_PREFIX.'pages');
     define('SQL_PUNISHMENTS', SQL_PREFIX.'punishments');
@@ -48,7 +50,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     define('SQL_SERVER_MODS', SQL_PREFIX.'server_mods');
     define('SQL_SESSIONS', SQL_PREFIX.'sessions');
 
-/* Format definitions */
+/* Time format definition */
     if(isset($GLOBALS['settings']['site_time_format']) && $GLOBALS['settings']['site_time_format'] != '')
         define('DATE_FORMAT', $GLOBALS['settings']['site_time_format']);
     else
@@ -60,6 +62,11 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     define('SP_VAR_FLOAT', 2); // Var should be an int
     define('SP_VAR_NEGATIVE', 4); // Var can be negative
     define('SP_VAR_EMPTY', 8); // Var can be empty
+
+/* Flags for 'ParseUserInput' */
+    define('SP_INPUT_NOTRIM', 1); // Don't remove white spaces etc from beginning and end
+    define('SP_INPUT_HTML', 2); // Allow HTML
+    define('SP_INPUT_ESCAPE', 4); // Escape for use with MySQL
 
 /* Flags for 'class.steam' */
     define('SP_STEAM_ID', 1); // Old SteamID

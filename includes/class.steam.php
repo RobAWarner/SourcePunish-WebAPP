@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -16,7 +16,7 @@ if(!defined('IN_SP')) die('Access Denied!');
     - Completely validate SteamID conversions
 */
 class Steam {
-    public $ProfilesURL = 'https://steamcommunity.com/profiles/';
+    public $ProfilesURL = 'http://steamcommunity.com/profiles/';
 
     public function Valid64($Steam64) {
         PrintDebug('Called Steam->Valid64 with \''.$Steam64.'\'', 2);
@@ -98,6 +98,28 @@ class Steam {
                 $Auth = (int)bcdiv(bcsub($Matches[1], $Server), '2');
                 $SteamID = 'STEAM_0:'.$Server.':'.$Auth;
                 return $SteamID;
+            }
+        }
+        return false;
+    }
+    public function GetProfileURL($FriendID) {
+        return $this->ProfilesURL.urlencode($FriendID);
+    }
+    public function GetSteamName($FriendID) {
+        $URL = $this->ProfilesURL.urlencode($FriendID).'/?xml=1&l=english';
+        $Stream = stream_context_create(array(
+            'http' => array(
+                'method' => 'GET',
+                'timeout' => 4,
+                'header' => "Accept-language: en\r\nConnection: close\r\n",
+            ),
+        ));
+        $GetResponse = file_get_contents($URL, false, $Stream);
+        unset($URL, $Stream);
+        if($GetResponse !== false) {
+            $SteamData = @simplexml_load_string($GetResponse);
+            if($SteamData !== false && isset($SteamData->steamID)) {
+                return (string)$SteamData->steamID;
             }
         }
         return false;

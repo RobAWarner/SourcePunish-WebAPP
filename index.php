@@ -59,7 +59,7 @@ switch($PageQuery) {
             Redirect('^');
     break;
     default:
-        if(CustomPageExists($PageQuery) && $PageQuery != 'home_intro')
+        if(SP_CustomPageExists($PageQuery) && $PageQuery != 'home_intro')
             require_once(DIR_PAGES.'page.custom.php');
         else
             Redirect('^');

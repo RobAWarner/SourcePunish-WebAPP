@@ -1,7 +1,7 @@
 <?php
 /*--------------------------------------------------------+
 | SourcePunish WebApp                                     |
-| Copyright (C) https://sourcepunish.net                  |
+| Copyright (C) 2015 https://sourcepunish.net             |
 +---------------------------------------------------------+
 | This program is free software and is released under     |
 | the terms of the GNU Affero General Public License      |
@@ -47,7 +47,7 @@ $GLOBALS['sql']->Free($PunishQuery);
 if(count($Rows) == 0)
     $Content = $GLOBALS['trans'][2011];
 else
-    $Content = BuildPunishTable($Rows);
+    $Content = SP_BuildPunishTable($Rows);
 unset($Rows);
 
 /* Add main content to page */
