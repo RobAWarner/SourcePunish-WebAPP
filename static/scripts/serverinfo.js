@@ -19,16 +19,16 @@ $(document).ready(function() {
                     if($ServerRow.length) {
                         if(Info.vac != 'undefined') {
                             if(Info.vac == 1) {
-                                if($ServerRow.find('td:nth-child(1)').find('img').css('visibility') == 'hidden')
-                                    $ServerRow.find('td:nth-child(1)').find('img').css('visibility', 'visible');
+                                if($ServerRow.find('.s-info-vac').find('img').css('visibility') == 'hidden')
+                                    $ServerRow.find('.s-info-vac').find('img').css('visibility', 'visible');
                             } else {
-                                if($ServerRow.find('td:nth-child(1)').find('img').css('visibility') == 'visible')
-                                    $ServerRow.find('td:nth-child(1)').find('img').css('visibility', 'hidden');
+                                if($ServerRow.find('.s-info-vac').find('img').css('visibility') == 'visible')
+                                    $ServerRow.find('.s-info-vac').find('img').css('visibility', 'hidden');
                             }
                         }
                         if(Info.hostname != 'undefined') {
-                            if($ServerRow.find('td:nth-child(3)').html() != Info.hostname)
-                                $ServerRow.find('td:nth-child(3)').html(Info.hostname);
+                            if($ServerRow.find('.s-info-name').html() != Info.hostname)
+                                $ServerRow.find('.s-info-name').html(Info.hostname);
                         }
                         if(Info.numplayers != 'undefined' && Info.maxplayers != 'undefined') {
                             $Players = ''+Info.numplayers;
@@ -36,14 +36,14 @@ $(document).ready(function() {
                             if(Info.bots != 'undefined' && Info.bots > 0) {
                                 $Players += ' <span title="bots">('+Info.bots+')</span>'
                             }
-                            if($ServerRow.find('td:nth-child(5)').html() != $Players) {
-                                $ServerRow.find('td:nth-child(5)').html($Players);
+                            if($ServerRow.find('.s-info-players').html() != $Players) {
+                                $ServerRow.find('.s-info-players').html($Players);
                                 DoToolTip();
                             }
                         }
                         if(Info.map !== 'undefined') {
-                            if($ServerRow.find('td:nth-child(6)').html() != Info.map)
-                                $ServerRow.find('td:nth-child(6)').html(Info.map);
+                            if($ServerRow.find('.s-info-map').html() != Info.map)
+                                $ServerRow.find('.s-info-map').html(Info.map);
                         }
                     }
                 });

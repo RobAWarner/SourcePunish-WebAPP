@@ -123,9 +123,9 @@ foreach($SearchTypes as $Type) {
                     continue 2;
                 }
                 if($_GET[$Type] == 1)
-                    $Queries[] = 'UnPunish=\'0\' AND Punish_Time+(Punish_Length*60) > '.time().'';
+                    $Queries[] = 'UnPunish=\'0\' AND ((Punish_Length > 0 AND Punish_Time+(Punish_Length*60) > '.time().') OR (Punish_Length=0 AND Punish_Type!=\'kick\'))';
                 else
-                    $Queries[] = 'Punish_Time+(Punish_Length*60) < '.time().'';
+                    $Queries[] = '(Punish_Time+(Punish_Length*60) < '.time().' AND (Punish_Length > 0 OR (Punish_Length=0 AND Punish_Type=\'kick\')))';
                 break;
             case 'removed':
                 if(!CheckVar($_GET[$Type], SP_VAR_INT) || $_GET[$Type] > 1 || $_GET[$Type] < 0){
@@ -274,7 +274,7 @@ $Table = array('class'=>'table-search',
     array('cols'=>array(array('content'=>$GLOBALS['trans'][1418]), array('content'=>'<input name="removername" type="text"'.(isset($Criteria['removername'])?' value="'.$Criteria['removername'].'"':'').' />'))),
     array('cols'=>array(array('content'=>$GLOBALS['trans'][1419]), array('content'=>'<input name="removerid" type="text" placeholder="'.sprintf($GLOBALS['trans'][3008], 'STEAM_0:1:12345678').'"'.(isset($Criteria['removerid'])?' value="'.$Criteria['removerid'].'"':'').' />'))),
     array('cols'=>array(array('content'=>$GLOBALS['trans'][1420]), array('content'=>'<input name="removalreason" type="text"'.(isset($Criteria['removalreason'])?' value="'.$Criteria['removalreason'].'"':'').' />'))),
-    array('cols'=>array(array('content'=>$GLOBALS['trans'][1412]), array('content'=>'<select name="dated" title="'.$GLOBALS['trans'][1413].'">'.$DateDList.'</select> / <select name="datem" title="'.$GLOBALS['trans'][1414].'">'.$DateMList.'</select> / '.(($DateYList != '')?'<select name="datey" title="'.$GLOBALS['trans'][1415].'">'.$DateYList.'</select>':'<input class="small" name="datey" maxlength="4" type="text" placeholder="'.$GLOBALS['trans'][1417].'" title="'.$GLOBALS['trans'][1415].'"'.(isset($Criteria['datey'])?' value="'.$Criteria['datey'].'"':'').' />')))),
+    array('cols'=>array(array('content'=>$GLOBALS['trans'][1412]), array('content'=>'<select name="dated">'.$DateDList.'</select> / <select name="datem">'.$DateMList.'</select> / '.(($DateYList != '')?'<select name="datey">'.$DateYList.'</select>':'<input class="small" name="datey" maxlength="4" type="text" placeholder="'.$GLOBALS['trans'][1417].'" title="'.$GLOBALS['trans'][1415].'"'.(isset($Criteria['datey'])?' value="'.$Criteria['datey'].'"':'').' />')))),
     array('cols'=>array(array('content'=>''), array('content'=>'<input value="Search..." type="submit" />')))
 ));
 
@@ -328,7 +328,7 @@ if($QueryString != '') {
         /* Add main content to page */
         $GLOBALS['theme']->AddContent(ucwords(sprintf($GLOBALS['trans'][1157], number_format($CurrentPage), number_format($TotalPages))), $Content, '', 'search-results');
         /* Add pagination links to page */
-        $GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^search&'.http_build_query($Criteria)).'&p='));
+        $GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^search&amp;'.http_build_query($Criteria)).'&amp;p=', '#search-results'));
     }
 }
 ?>

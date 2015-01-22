@@ -10,6 +10,7 @@ html, body, form, fieldset, p, a, ul, li, div, label, br, input, textarea, h1, h
     vertical-align: baseline;
     line-height: 1;
     text-align: left;
+    *zoom: 1;
 }
 header, nav, section, article, aside, footer, hgroup {
     display: block;
@@ -144,9 +145,9 @@ body {
     border: 1px solid #000;
     border-top: 0px;
 }
-#nav-user ul li:hover ul, #nav-main ul li:hover ul {
+/*#nav-user ul li:hover ul, #nav-main ul li:hover ul {
     display: block;
-}
+}*/
 #nav-user ul li ul li, #nav-main ul li ul li {
     float: none;
     border-right: 0px;
@@ -218,18 +219,24 @@ tbody tr:hover {
 
 
 /* Forms */
+.button,
 form select,
 form textarea,
 form input {
-    border: 1px solid #8C8C8C;
+    border: 1px solid #8C8C8C !important;
     border-radius: 2px;
     margin: 3px;
     padding: 6px;
-    color: #666;
+    color: #000 !important;
 }
 form input[type=text] {
     width: 85%;
+    height: 28px;
+    line-height:28px;
+    padding: 0px 6px !important;
 }
+.button:hover,
+.button:focus,
 form select:hover,
 form select:focus,
 form textarea:hover,

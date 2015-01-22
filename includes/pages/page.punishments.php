@@ -53,5 +53,5 @@ unset($Rows);
 /* Add main content to page */
 $GLOBALS['theme']->AddContent(ucwords(sprintf($GLOBALS['trans'][1157], number_format($CurrentPage), number_format($TotalPages))), $Content);
 /* Add pagination links to page */
-$GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^punishments').'&p='));
+$GLOBALS['theme']->AddContent('', $GLOBALS['theme']->Paginate($TotalPages, $CurrentPage, ParseURL('^punishments').'&amp;p='));
 ?>

@@ -48,18 +48,18 @@ if(isset($_GET['id']) && $_GET['id'] != '' && IsNum($_GET['id']) && $_GET['id'] 
 
     $ServerTable = array('headings'=>array(), 'rows'=>array(), 'class'=>'table-servers table-servers-update');
     $ServerTable['headings'] = array(
+        array('content'=>$GLOBALS['trans'][1206], 'class'=>'col-loc'),
         array('content'=>$GLOBALS['trans'][1205], 'class'=>'col-vac'),
         array('content'=>$GLOBALS['trans'][1200], 'class'=>'col-mod'),
         array('content'=>$GLOBALS['trans'][1202], 'class'=>'col-name'),
         array('content'=>$GLOBALS['trans'][1201], 'class'=>'col-address'),
         array('content'=>$GLOBALS['trans'][1203], 'class'=>'col-players'),
         array('content'=>$GLOBALS['trans'][1204], 'class'=>'col-map'),
-        array('content'=>'', 'class'=>'col-loc')
     );
     foreach($Servers as $ID=>$Server) {
         $IP = SP_GetAddressFromString($Server['ip']);
         $GeoIP = SP_GeoIPCountry($IP['address']);
-        $ServerTable['rows'][] = array('custom'=>'data-sid="'.$ID.'"', 'cols'=>array(array('content'=>'<img alt="VAC" title="Valve Anti-Cheat Secure" src="'.HTML_IMAGES.'vac.png" />'), array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['mod']['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'), array('content'=>htmlspecialchars($Server['name'])), array('content'=>'<a href="steam://connect/'.$Server['host'].'" title="'.$GLOBALS['trans'][1208].'">'.htmlspecialchars($Server['host']).'</a>'), array('content'=>'-'), array('content'=>'-'), array('content'=>($GeoIP!==false?'<img alt="'.$GeoIP['country_code'].'" title="'.$GeoIP['country'].'" src="'.$GeoIP['country_flag'].'" />':'')), ));
+        $ServerTable['rows'][] = array('custom'=>'data-sid="'.$ID.'"', 'cols'=>array(array('content'=>($GeoIP!==false?'<img alt="'.$GeoIP['country_code'].'" title="'.$GeoIP['country'].'" src="'.$GeoIP['country_flag'].'" />':'')), array('content'=>'<span class="s-info-vac"><img alt="VAC" title="Valve Anti-Cheat Secure" src="'.HTML_IMAGES.'vac.png" /></span>'), array('content'=>'<span class="s-info-mod"><img alt="'.$Server['mod']['short'].'" title="'.$Server['mod']['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" /></span>'), array('content'=>'<span class="s-info-name">'.htmlspecialchars($Server['name']).'</span>'), array('content'=>'<a href="steam://connect/'.$Server['host'].'" title="'.$GLOBALS['trans'][1208].'">'.htmlspecialchars($Server['host']).'</a>'), array('content'=>'<span class="s-info-players">-</span>'), array('content'=>'<span class="s-info-map">-</span>')));
     }
     unset($Servers);
     $ServerTable = $GLOBALS['theme']->BuildTable($ServerTable);
