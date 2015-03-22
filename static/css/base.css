@@ -120,15 +120,17 @@ table.table-punish .col-date {
 }
 table.table-punish .col-server {
     width: 45px;
+}table.table-punish .col-loc {
+    width: 30px;
 }
 table.table-punish .col-player {
-    width: 320px;
+    width: 370px;
 }
 table.table-punish .col-type {
     width: 100px;
 }
 table.table-punish .col-length {
-    width: 180px;
+    width: 130px;
 }
 
 table.table-servers .col-loc,
@@ -137,10 +139,10 @@ table.table-servers .col-mod {
     width: 30px;
 }
 table.table-servers .col-players {
-    width: 70px;
+    width: 100px;
 }
 table.table-servers .col-map {
-    width: 200px;
+    width: 270px;
 }
 
 table.table-format-data tbody tr td {
@@ -178,6 +180,43 @@ table .col-mod {
 }
 table .col-address {
     width: 400px;
+}
+
+.comment {
+    border-bottom: 1px solid #A1A1A1;
+    padding: 7px 0px;
+    margin: 7px 0px;
+}
+.comment-header {
+    
+}
+.comment-header .comment-user {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+.comment-header .comment-time {
+    color: #424242;
+}
+.comment-body {
+    padding: 10px;
+    background-color: #F5F5F5;
+    border: 1px dashed #DEDEDE;
+    margin: 10px 0px;
+}
+.comment-body .comment-attachments {
+    border-top: 1px dashed #DEDEDE;
+    margin-top: 10px;
+    padding-top: 7px;
+}
+.comment-body .comment-attachments ul li {
+    padding: 3px;
+}
+.comment:last-child {
+    border-bottom: none !important;
+    margin-bottom: 0px !important;
+}
+.comment:last-child .comment-body {
+    margin-bottom: 0px !important;
 }
 
 .stat-container {

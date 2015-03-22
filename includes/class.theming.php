@@ -29,11 +29,17 @@ class Theming {
     private $Content = '';
 
     public function __construct() {
+        if(!isset($GLOBALS['sql']))
+            die('Error: SQL class not initiated in class.theming, cannot continue!');
+        if(!defined('SQL_NAVIGATION'))
+            die('Missing definitions in class.theming, cannot continue!');
+
         if(isset($GLOBALS['settings']['site_title']) && $GLOBALS['settings']['site_title'] != '')
             $this->Title = htmlspecialchars($GLOBALS['settings']['site_title']);
         else
             $this->Title = SP_WEB_NAME;
     }
+
     public function AddTitle($Text) {
         PrintDebug('Called Theming->AddTitle', 2);
         if($Text == '')
@@ -112,7 +118,7 @@ class Theming {
             }
         } else
             $AuthTypes .= ' OR nav_auth=\'1\'';
-        $GetNavs = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PREFIX.'navigation WHERE nav_showing=\'1\' AND ('.$AuthTypes.') ORDER BY nav_position ASC, nav_order ASC');
+        $GetNavs = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_NAVIGATION.' WHERE nav_showing=\'1\' AND ('.$AuthTypes.') ORDER BY nav_position ASC, nav_order ASC');
         $Navs = array(1=>array(), 0=>array());
         while($Row = $GLOBALS['sql']->FetchArray($GetNavs)) {
             $NavItem = array('title'=>ParseText($Row['nav_title']),'url'=>ParseURL($Row['nav_url']));
@@ -136,14 +142,14 @@ class Theming {
         $GLOBALS['sql']->Free($GetNavs);
         $BuildNav = array(0=>array(), 1=>array());
         if(function_exists('Subtheme_NavMenu')) {
-            $BuildNav[0] = Subtheme_NavMenu($Navs[0]);
-            $BuildNav[1] = Subtheme_NavMenu($Navs[1]);
+            $BuildNav[0] = Subtheme_NavMenu($Navs[0], 0);
+            $BuildNav[1] = Subtheme_NavMenu($Navs[1], 1);
         } else if(function_exists('Theme_NavMenu')) {
-            $BuildNav[0] = Theme_NavMenu($Navs[0]);
-            $BuildNav[1] = Theme_NavMenu($Navs[1]);
+            $BuildNav[0] = Theme_NavMenu($Navs[0], 0);
+            $BuildNav[1] = Theme_NavMenu($Navs[1], 1);
         } else {
-            $BuildNav[0] = DefaultTheme_NavMenu($Navs[0]);
-            $BuildNav[1] = DefaultTheme_NavMenu($Navs[1]);
+            $BuildNav[0] = DefaultTheme_NavMenu($Navs[0], 0);
+            $BuildNav[1] = DefaultTheme_NavMenu($Navs[1], 1);
         }
         unset($Navs);
         return $BuildNav;
@@ -248,6 +254,45 @@ class Theming {
         else
             $Build = DefaultTheme_Table($Build);
         return $Build;
+    }
+    public function BuildComments($Array) {
+        /* TODO, ATTR */
+        $Comments = '';
+        foreach($Array['comments'] as $ID => $Comment) {
+            if(isset($Comment['attachments'])) {
+                $Attachments = '';
+                foreach($Comment['attachments'] as $Attachment) {
+                    $Attachment['title'] = $GLOBALS['trans'][3016];
+                    if(function_exists('Subtheme_CommentAttachment'))
+                        $$Attachments .= Subtheme_CommentAttachment($Attachment);
+                    else if(function_exists('Theme_CommentAttachment'))
+                        $Attachments .= Theme_CommentAttachment($Attachment);
+                    else
+                        $Attachments .= DefaultTheme_CommentAttachment($Attachment);
+                }
+                if(function_exists('Subtheme_CommentAttachmentContainer'))
+                    $Comment['attachments'] = Subtheme_CommentAttachmentContainer($Attachments);
+                else if(function_exists('Theme_CommentAttachmentContainer'))
+                    $Comment['attachments'] = Theme_CommentAttachmentContainer($Attachments);
+                else
+                    $Comment['attachments'] = DefaultTheme_CommentAttachmentContainer($Attachments);
+                unset($Attachments);
+            }
+            if(function_exists('Subtheme_Comment'))
+                $Comments .= Subtheme_Comment($Comment);
+            else if(function_exists('Theme_Comment'))
+                $Comments .= Theme_Comment($Comment);
+            else
+                $Comments .= DefaultTheme_Comment($Comment);
+        }
+        unset($Array['comments']);
+        if(function_exists('Subtheme_CommentContainer'))
+            $Comments = Subtheme_CommentContainer($Comments);
+        else if(function_exists('Theme_CommentContainer'))
+            $Comments = Theme_CommentContainer($Comments);
+        else
+            $Comments = DefaultTheme_CommentContainer($Comments);
+        return $Comments;
     }
     public function Paginate($TotalPages, $CurrentPage, $PagePrefix, $PageSuffix = '') {
         PrintDebug('Called Theming->Paginate', 2);

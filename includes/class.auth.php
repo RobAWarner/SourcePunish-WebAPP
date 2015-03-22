@@ -25,6 +25,15 @@ class Auth {
     private $UserAdmin = false;
     private $UserAdminFlags = array();
 
+	public function __construct() {
+        if(!isset($GLOBALS['sql']))
+            die('Error: SQL class not initiated in class.auth, cannot continue!');
+        if(!isset($GLOBALS['steam']))
+            die('Steam class not initiated in class.auth, cannot continue!');
+        if(!defined('SQL_SESSIONS'))
+            die('Missing definitions in class.auth, cannot continue!');
+    }
+
     public function GetLoginURL() {
         PrintDebug('Called Auth->GetLoginURL', 2);
         $OpenIDParams = array(
@@ -85,10 +94,10 @@ class Auth {
         $SessionID = $GLOBALS['sql']->Escape($SessionID);
         $Steam64 = $GLOBALS['sql']->Escape($Steam64);
         $UserIP = $GLOBALS['sql']->Escape(USER_ADDRESS);
-        if($GLOBALS['sql']->Query_Rows('SELECT session_id FROM '.SQL_PREFIX.'sessions WHERE session_user=\''.$Steam64.'\' LIMIT 1') == 1)
-            $GLOBALS['sql']->Query('UPDATE '.SQL_PREFIX.'sessions SET session_id=\''.$SessionID.'\', session_time=\''.$Time.'\', session_user_name=\''.$SteamName.'\', session_user_ip=\''.$UserIP.'\' WHERE session_user=\''.$Steam64.'\' LIMIT 1');
+        if($GLOBALS['sql']->Query_Rows('SELECT session_id FROM '.SQL_SESSIONS.' WHERE session_user=\''.$Steam64.'\' LIMIT 1') == 1)
+            $GLOBALS['sql']->Query('UPDATE '.SQL_SESSIONS.' SET session_id=\''.$SessionID.'\', session_time=\''.$Time.'\', session_user_name=\''.$SteamName.'\', session_user_ip=\''.$UserIP.'\' WHERE session_user=\''.$Steam64.'\' LIMIT 1');
         else
-            $GLOBALS['sql']->Query('INSERT INTO '.SQL_PREFIX.'sessions (session_id, session_user, session_user_name, session_user_ip, session_time) VALUES (\''.$SessionID.'\', \''.$Steam64.'\', \''.$SteamName.'\', \''.$UserIP.'\', \''.$Time.'\')');
+            $GLOBALS['sql']->Query('INSERT INTO '.SQL_SESSIONS.' (session_id, session_user, session_user_name, session_user_ip, session_time) VALUES (\''.$SessionID.'\', \''.$Steam64.'\', \''.$SteamName.'\', \''.$UserIP.'\', \''.$Time.'\')');
         setcookie('SP_SESSION_ID', $SessionID, (int)$GLOBALS['settings']['site_session_timeout']);
         return true;
     }
@@ -96,7 +105,7 @@ class Auth {
         PrintDebug('Called Auth->ValidateSession', 2);
         if(isset($_COOKIE['SP_SESSION_ID']) && strlen($_COOKIE['SP_SESSION_ID']) == 40) {
             $SessionID = $GLOBALS['sql']->Escape($_COOKIE['SP_SESSION_ID']);
-            $SessionQuery = $GLOBALS['sql']->Query('SELECT session_user, session_user_name, session_user_ip FROM '.SQL_PREFIX.'sessions WHERE session_id=\''.$SessionID.'\' LIMIT 1');
+            $SessionQuery = $GLOBALS['sql']->Query('SELECT session_user, session_user_name, session_user_ip FROM '.SQL_SESSIONS.' WHERE session_id=\''.$SessionID.'\' LIMIT 1');
             if($GLOBALS['sql']->Rows($SessionQuery) == 1) {
                 $SessionArray = $GLOBALS['sql']->FetchArray($SessionQuery);
                 if(USER_ADDRESS == $SessionArray['session_user_ip']) {

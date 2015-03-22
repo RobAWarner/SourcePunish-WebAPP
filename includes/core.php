@@ -77,6 +77,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     define('DIR_PAGES', DIR_INCLUDE.'pages/');
     define('DIR_THEMES',  DIR_ROOT.'themes/');
     define('DIR_TRANSLATIONS',  DIR_ROOT.'translations/');
+    define('DIR_UPLOADS_DEMOS',  DIR_ROOT.'uploads/demos/');
 
 /* Are we serving an ajax request? */
     if(isset($_GET['ajax']) && $_GET['ajax'] == '1')
@@ -298,13 +299,13 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     }
 
     /* Check if input is a valid IP adress, should move to 'CheckVar'? */
-    function IsValidIP($IPAddress, $Type = 'both') {
-        if($Type == 'ipv4' || $Type == 'both') {
-            if(preg_match('/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/', $IPAddress))
+    function IsValidIP($IPAddress, $Flags = SP_IP_BOTH) {
+        if($Flags & SP_IP_V4 || $Flags & SP_IP_BOTH) {
+            if(filter_var($IPAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
                 return true;
         }
-        if($Type == 'ipv6' || $Type == 'both') {
-            if(preg_match('/^(((?=.*(::))(?!.*\3.+\3))\3?|([\dA-F]{1,4}(\3|:\b|$)|\2))(?4){5}((?4){2}|(((2[0-4]|1\d|[1-9])?\d|25[0-5])\.?\b){4})\z$/i', $IPAddress))
+        if($Flags & SP_IP_V6 || $Flags & SP_IP_BOTH) {
+            if(filter_var($IPAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6))
                 return true;
         }
         return false;
@@ -323,6 +324,20 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
         else if($Level == 4 && USER_SUPERADMIN)
             return true;
         return false;
+    }
+
+    /* Return current auth level as number */
+    function CurrentAuthLevel() {
+        if(!USER_LOGGEDIN)
+            return 1;
+        else if(USER_SUPERADMIN)
+            return 4;
+        else if(USER_ADMIN)
+            return 3;
+        else if(USER_LOGGEDIN)
+            return 2;
+        else
+            return false;
     }
 
     /* Redirect user to given URL */
@@ -385,12 +400,15 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     
     /* Parse a user input and remove unneeded space, characters, html etc */
     function ParseUserInput($Text, $Limit = 0, $Flags = 0) {
-        if(!($Flags & SP_INPUT_NOTRIM))
+        if(!($Flags & SP_INPUT_NOTRIM)) {
             $Text = trim($Text);
+            $Text = preg_replace('/ +/', ' ', $Text);
+            $Text = preg_replace('/(\r?\n){2,}/', "\n\n", $Text);
+        }
         if($Limit > 0)
             $Text = substr($Text, 0, $Limit);
-        if(!($Flags & SP_INPUT_HTML))
-            $Text = SpecialChars($Text);
+        /*if(!($Flags & SP_INPUT_HTML))
+            $Text = SpecialChars($Text);*/
         if($Flags & SP_INPUT_ESCAPE)
             $Text = $GLOBALS['sql']->Escape($Text);
 
@@ -399,11 +417,11 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 
     /* Get GeoIP country information for IP address */
     function SP_GeoIPCountry($IP) {
-        if(!IsValidIP($IP, 'ipv4'))
+        if(!IsValidIP($IP, SP_IP_V4))
             return false;
-        $IP = $GLOBALS['sql']->Escape($IP);
         $CountryInfo = array();
-        $GeoIPQuery = $GLOBALS['sql']->Query_FetchArray('SELECT geoip_country_code, geoip_country FROM '.SQL_GEOIP.' WHERE INET_ATON(\''.$IP.'\') BETWEEN geoip_locid_start AND geoip_locid_end LIMIT 1');
+        $IpInt = $GLOBALS['sql']->Escape(sprintf("%u", ip2long($IP)));
+        $GeoIPQuery = $GLOBALS['sql']->Query_FetchArray('SELECT geoip_country_code, geoip_country FROM '.SQL_GEOIP.' FORCE INDEX(geoip_locid_end) WHERE geoip_locid_start <= '.$IpInt.' AND geoip_locid_end >= '.$IpInt.' LIMIT 1');
         if(empty($GeoIPQuery) || !isset($GeoIPQuery['geoip_country_code'], $GeoIPQuery['geoip_country']))
             return false;
         $CountryInfo['country'] = $GeoIPQuery['geoip_country'];
@@ -418,6 +436,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
         $Table['headings'] = array(
             array('content'=>ucfirst($GLOBALS['trans'][1100]), 'class'=>'col-date'),
             array('content'=>ucfirst($GLOBALS['trans'][1101]), 'class'=>'col-server'),
+            array('content'=>ucfirst($GLOBALS['trans'][1206]), 'class'=>'col-loc'),
             array('content'=>ucfirst($GLOBALS['trans'][1102]), 'class'=>'col-player'),
             array('content'=>ucfirst($GLOBALS['trans'][1103]), 'class'=>'col-type'),
             array('content'=>ucfirst($GLOBALS['trans'][1104]), 'class'=>'col-reason'),
@@ -425,6 +444,13 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
         );
         foreach($Rows as $Row) {
             $Server = SP_GetServerInfo($Row['Punish_Server_ID']);
+            if(isset($Row['Punish_Player_IP'])) {
+                $GeoIPQuery = SP_GeoIPCountry($Row['Punish_Player_IP']);
+                if($GeoIPQuery !== false) {
+                    $Row['Punish_Player_Country_Flag'] = '<img src="'.$GeoIPQuery['country_flag'].'" title="'.$GeoIPQuery['country'].'" alt="'.$GeoIPQuery['country_code'].'" />';
+                }
+                unset($GeoIPQuery);
+            }
             $ATime = array();
             $Time = SP_LengthString($Row['Punish_Length']);
             if($Row['UnPunish'] == 1) {
@@ -442,6 +468,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
             $Table['rows'][] = array('cols'=>array(
                 array('content'=>sprintf($GLOBALS['trans'][3003], ucwords(SP_PrintTimeDiff(SP_TimeDiff(time()-$Row['Punish_Time']), 1))), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
                 array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'),
+                array('content'=>(isset($Row['Punish_Player_Country_Flag']))?$Row['Punish_Player_Country_Flag']:''),
                 array('content'=>SpecialChars($Row['Punish_Player_Name'])),
                 array('content'=>SpecialChars(ucwords($Row['Punish_Type']))),
                 array('content'=>SpecialChars($Row['Punish_Reason'])),
@@ -455,7 +482,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     /* Check if a custom page exists */
     function SP_CustomPageExists($Ref) {
         $PageRef = $GLOBALS['sql']->Escape($Ref);
-        $PageQuery = $GLOBALS['sql']->Query_Rows('SELECT page_ref FROM '.SQL_PAGES.' WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
+        $PageQuery = $GLOBALS['sql']->Query_Rows('SELECT page_ref FROM '.SQL_PAGES.' WHERE page_ref = \''.$PageRef.'\' LIMIT 1');
         if($PageQuery == 1)
             return true;
         return false;
@@ -464,7 +491,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     /* Get the content of a custom page */
     function SP_GetCustomPage($Ref) {
         $PageRef = $GLOBALS['sql']->Escape($Ref);
-        $PageQuery = $GLOBALS['sql']->Query_FetchArray('SELECT * FROM '.SQL_PAGES.' WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
+        $PageQuery = $GLOBALS['sql']->Query_FetchArray('SELECT * FROM '.SQL_PAGES.' WHERE page_ref = \''.$PageRef.'\' LIMIT 1');
         if(HasAuthLevel($PageQuery['page_auth'])) {
             $PageQuery['title'] = ParseText($PageQuery['page_title']);
             unset($PageQuery['page_title']);
@@ -495,7 +522,7 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
             return $GetServerInfo;
         }
         $ServerID = $GLOBALS['sql']->Escape($ServerID);
-        $GetServerInfo_Row = $GLOBALS['sql']->Query_FetchArray('SELECT s.*, m.* FROM '.SQL_SERVERS.' s LEFT JOIN '.SQL_SERVER_MODS.' m ON m.Mod_ID = s.Server_Mod WHERE s.Server_ID=\''.$ServerID.'\' LIMIT 1');
+        $GetServerInfo_Row = $GLOBALS['sql']->Query_FetchArray('SELECT s.*, m.* FROM '.SQL_SERVERS.' s LEFT JOIN '.SQL_SERVER_MODS.' m ON m.Mod_ID = s.Server_Mod WHERE s.Server_ID = \''.$ServerID.'\' LIMIT 1');
         if(empty($GetServerInfo_Row)) {
             if(!$ReturnUnknow)
                 return false;

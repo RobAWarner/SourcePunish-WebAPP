@@ -219,6 +219,9 @@ tbody tr:hover {
 
 
 /* Forms */
+.button {
+    background-color: #fff;
+}
 .button,
 form select,
 form textarea,
@@ -234,6 +237,10 @@ form input[type=text] {
     height: 28px;
     line-height:28px;
     padding: 0px 6px !important;
+}
+form textarea {
+    width: 95%;
+    padding: 6px !important;
 }
 .button:hover,
 .button:focus,

@@ -26,6 +26,15 @@ $(document).ready(function() {
                                     $ServerRow.find('.s-info-vac').find('img').css('visibility', 'hidden');
                             }
                         }
+                        if(Info.mod.short != 'undefined' && Info.mod.name != 'undefined') {
+                            if(Info.mod.short == 'tf')
+                                Info.mod.short = 'tf2';
+                            if($ServerRow.find('.s-info-mod').find('img').attr('src').match(/.*\/([^/]+)\.([^?]+)/i)[1] != Info.mod.short+'.png') {
+                                $ServerRow.find('.s-info-mod').find('img').attr('src', $ServerRow.find('.s-info-mod').find('img').attr('src').replace($ServerRow.find('.s-info-mod').find('img').attr('src').match(/.*\/([^/]+)\.([^?]+)/i)[1], Info.mod.short));
+                                $ServerRow.find('.s-info-mod').find('img').attr('title', Info.mod.name);
+                                $ServerRow.find('.s-info-mod').find('img').attr('alt', Info.mod.short);
+                            }
+                        }
                         if(Info.hostname != 'undefined') {
                             if($ServerRow.find('.s-info-name').html() != Info.hostname)
                                 $ServerRow.find('.s-info-name').html(Info.hostname);

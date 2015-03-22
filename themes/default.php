@@ -32,12 +32,12 @@ function DefaultTheme_HeaderStat($Text) {
 function DefaultTheme_NavMenuLink($Array) {
     return '<a href="'.$Array['url'].'" title="'.$Array['title'].'"'.(isset($Array['target'])?' target="'.$Array['target'].'"':'').'>'.$Array['title'].'</a>';
 }
-function DefaultTheme_NavMenu($Array) {
+function DefaultTheme_NavMenu($Array, $Type) {
     $Build = '<ul>'."\n";
     foreach($Array as $NavItem) {
         $Build .= '<li>'.$NavItem['link'];
         if(isset($NavItem['children']))
-            $Build .= DefaultTheme_NavMenu($NavItem['children']);
+            $Build .= DefaultTheme_NavMenu($NavItem['children'], $Type);
         $Build .= '</li>'."\n";
     }
     $Build .= '</ul>'."\n";
@@ -61,6 +61,31 @@ function DefaultTheme_Table($Array) {
     $Build .= '</tbody>'."\n";
     $Build .= '</table>'."\n";
     return $Build;
+}
+function DefaultTheme_Comment($Array) {
+    $Build = '<div class="comment">'."\n";
+    $Build .= '<div class="comment-header">'."\n";
+    $Build .= '<span class="comment-user"'.((isset($Array['user_id']) && $Array['user_id'] > 0)?' title="'.$Array['user_id'].'"':'').'>'.$Array['user_name'].'</span>&nbsp;-&nbsp;<span class="comment-time">'.$Array['time'].'</span>';
+    $Build .= '</div>'."\n";
+    $Build .= '<div class="comment-body">'."\n";
+    $Build .= '<p>'.$Array['text'].'</p>';
+    if(isset($Array['attachments'])) {
+        $Build .= '<div class="comment-attachments">'."\n";
+        $Build .= $Array['attachments'];
+        $Build .= '</div>'."\n";
+    }
+    $Build .= '</div>'."\n";
+    $Build .= '</div>'."\n";
+    return $Build;
+}
+function DefaultTheme_CommentAttachment($Array) {
+    return '<li><a class="comment-attachment-link" href="'.$Array['file'].'" title="'.$Array['title'].'">'.$Array['name'].'</a>&nbsp;-&nbsp;<span class="comment-attachment-time">'.$Array['time'].'</span></li>'."\n";
+}
+function DefaultTheme_CommentAttachmentContainer($Content) {
+    return '<ul class="comment-attachment-list">'.$Content.'</ul>';
+}
+function DefaultTheme_CommentContainer($Content) {
+    return '<section class="comment-container">'.$Content.'</section>';
 }
 function DefaultTheme_PaginationLink($Array) {
     return '<a href="'.$Array['url'].'"'.(isset($Array['class'])?' class="'.$Array['class'].'"':'').'>'.$Array['text'].'</a>';

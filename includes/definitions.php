@@ -36,12 +36,15 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     define('HTML_IMAGES_GAMES', HTML_IMAGES.'games/');
     define('HTML_IMAGES_FLAGS', HTML_IMAGES.'flags/');
     define('HTML_SCRIPTS', HTML_ROOT.'static/scripts/');
+    define('HTML_UPLOADS', HTML_ROOT.'uploads/');
+    define('HTML_UPLOADS_DEMOS', HTML_UPLOADS.'demos/');
     define('HTML_CSS', HTML_ROOT.'static/css/');
     define('URL_PAGE', 'index.php');
     define('URL_QUERY', '?q=');
 
 /* MySQL definitions */
     define('SQL_APPEALS', SQL_PREFIX.'appeals');
+    define('SQL_COMMENTS', SQL_PREFIX.'comments');
     define('SQL_GEOIP', SQL_PREFIX.'maxmind_geoip');
     define('SQL_NAVIGATION', SQL_PREFIX.'navigation');
     define('SQL_PAGES', SQL_PREFIX.'pages');
@@ -49,6 +52,8 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     define('SQL_SERVERS', SQL_PREFIX.'servers');
     define('SQL_SERVER_MODS', SQL_PREFIX.'server_mods');
     define('SQL_SESSIONS', SQL_PREFIX.'sessions');
+    define('SQL_UPLOADS', SQL_PREFIX.'uploads');
+    define('SQL_USERS', SQL_PREFIX.'users');
 
 /* Time format definition */
     if(isset($GLOBALS['settings']['site_time_format']) && $GLOBALS['settings']['site_time_format'] != '')
@@ -56,6 +61,11 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
     else
         define('DATE_FORMAT', 'H:i - jS F Y');
     unset($GLOBALS['settings']['site_time_format']);
+
+/* Flags for 'ValidIP' */
+    define('SP_IP_V4', 1);
+    define('SP_IP_V6', 2);
+    define('SP_IP_BOTH', 4);
 
 /* Flags for 'CheckVar' */
     define('SP_VAR_INT', 1); // Var should be an int
@@ -65,13 +75,19 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 
 /* Flags for 'ParseUserInput' */
     define('SP_INPUT_NOTRIM', 1); // Don't remove white spaces etc from beginning and end
-    define('SP_INPUT_HTML', 2); // Allow HTML
+    //define('SP_INPUT_HTML', 2); // Allow HTML
     define('SP_INPUT_ESCAPE', 4); // Escape for use with MySQL
 
 /* Flags for 'class.steam' */
     define('SP_STEAM_ID', 1); // Old SteamID
     define('SP_STEAM_ID3', 2); // New SteamID3
     define('SP_STEAM_ID_BOTH', 4); // SteamID & SteamID3
+
+/* Flags for 'class.comments' */
+    define('SP_COMMENT_NOATTACH', 1); // Don't fetch attachments
+    define('SP_COMMENT_RETURN', 2); // Return comments instead of adding to the page
+    define('SP_COMMENT_SYSTEM', 4); // Post comment as 'System'
+    define('SP_COMMENT_NOPARSE', 8); // Don't apply 'ParseUserInput()' to comment text
     
 /* User IP address */
     $IPAddress = '';
