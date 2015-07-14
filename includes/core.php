@@ -11,49 +11,55 @@
 | software as agpl-3.0.txt or viewable at                 |
 | http://www.gnu.org/licenses/agpl-3.0.html               |
 +--------------------------------------------------------*/
+
 if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
 
-/* *TODO*
-    - Add system to allow banning users from logging in
-    - Custom error reporting
-    - Clean code! (With comments?)
-    - Config for timezone
-    - ParseText use flags?
-    - IsValidIP to CheckVar?
-    - Split translations into pages and add SP_LoadTranslations($Name) ?
+/*{{TODO}}*/
+/*
+    - Set timezone to user specific
+    - Validate/Sanitise paths for theme etc
 */
 
 /* Site definitions */
-    define('IN_SP', true);
-    define('SP_WEB_VERSION', '0.0.4');
-    define('SP_WEB_NAME', 'SourcePunish WebApp');
+    define('SP_LOADED', true);
+    define('SP_WEBAPP_NAME', 'SourcePunish WebApp');
+    define('SP_WEBAPP_VERSION', '0.1.0');
+    define('SP_WEBAPP_URL', 'https://SourcePunish.net');
+    define('SP_WEBAPP_URL_ERROR', 'https://SourcePunish.net/help/errors/%s');
 
-/* Global variable for caching */
-    $GLOBALS['varcache'] = array();
-    $GLOBALS['varcache']['debug']['starttime'] = microtime(true);
-    $GLOBALS['varcache']['debug']['lasttime'] = $GLOBALS['varcache']['debug']['starttime'];
-    $GLOBALS['varcache']['debug']['lastmem'] = memory_get_usage();
+    $GlobalCache = array();
 
-/* Set the time zone */
+/* Define the current operating directory */
+    define('DIR_ROOT', dirname(dirname(__FILE__)).'/');
+
+/* Are we serving an ajax request? */
+    if((isset($_GET['ajax']) && $_GET['ajax'] == '1') || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')))
+        define('AJAX_REQUEST', true);
+    else
+        define('AJAX_REQUEST', false);
+
+/* Set time zone  */
     if(function_exists('date_default_timezone_set'))
         date_default_timezone_set('UTC');
     else
         ini_set('date.timezone', 'UTC');
 
-/* Test if the system is running 32bit PHP */
-    if(PHP_INT_SIZE == 4)
-        define('IS32BIT', true);
+/* Set script shutdown function */
+    register_shutdown_function('ScriptShutdown');
+
+/* Load the error handler */
+    if(file_exists(DIR_ROOT.'includes/class.error_handler.php'))
+        require_once(DIR_ROOT.'includes/class.error_handler.php');
     else
-        define('IS32BIT', false);
+        die('SourcePunish encountered a fatal error. Unable to load error handler "includes/class.error_handler.php". See more information and potential fixes for: <a href="'.sprintf(SP_WEBAPP_URL_ERROR, 'file.missing').'" title="See more about this error" target="_blank">file.missing</a>.');
 
-/* Set shutdown function */
-    register_shutdown_function('SP_ScriptShutdown');
+/* Load the config file */
+    SP_Require(DIR_ROOT.'includes/config.php');
 
-/* Load the configuration file */
-    require_once('includes/config.php');
-    if(!isset($GLOBALS['config']))
-        die('Error: Configuration(s) missing in file config.php');
-
+    /* Check configurations are loaded */
+        if(!isset($GLOBALS['config']) || isset($GLOBALS['new-install']))
+            throw new SiteError('file.config.empty');
+    
 /* Show PHP errors for development purposes */
     if(isset($GLOBALS['config']['system']['phperrors']) && $GLOBALS['config']['system']['phperrors'] == true) {
         error_reporting(E_ALL);
@@ -63,291 +69,105 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
         ini_set('display_errors', '0');
     }
 
-/* PHP Paths */
-    if(isset($GLOBALS['config']['system']['path_php']) && !empty($GLOBALS['config']['system']['path_php'])) {
-        if(substr($GLOBALS['config']['system']['path_php'], -1) != '/' || substr($GLOBALS['config']['system']['path_php'], -1) != '\\')
-            $GLOBALS['config']['system']['path_php'] .= '/';
-        define('DIR_ROOT', $GLOBALS['config']['system']['path_php']);
-    } else
-        define('DIR_ROOT', dirname(dirname(__FILE__)).'/');
-    unset($GLOBALS['config']['system']['path_php']);
-    /* Define the paths */
-    define('DIR_INCLUDE', DIR_ROOT.'includes/');
-    define('DIR_CACHE', DIR_ROOT.'data/');
-    define('DIR_PAGES', DIR_INCLUDE.'pages/');
-    define('DIR_THEMES',  DIR_ROOT.'themes/');
-    define('DIR_TRANSLATIONS',  DIR_ROOT.'translations/');
-    define('DIR_UPLOADS_DEMOS',  DIR_ROOT.'uploads/demos/');
-
-/* Are we serving an ajax request? */
-    if(isset($_GET['ajax']) && $_GET['ajax'] == '1')
-        define('AJAX', true);
-    else
-        define('AJAX', false);
-
-/* Debugging message function */
-    function PrintDebug($Text, $Level = 1) {
-        if(!AJAX && isset($GLOBALS['config']['system']['printdebug']) && $GLOBALS['config']['system']['printdebug'] > 0 && $Level <= $GLOBALS['config']['system']['printdebug']) {
-            $Time = microtime(true);
-            $Mem = memory_get_usage();
-            echo '<!-- DEBUG "'.$Text.'" TIME:'.number_format($Time-$GLOBALS['varcache']['debug']['starttime'], 11).'/'.number_format($Time-$GLOBALS['varcache']['debug']['lasttime'], 11).' |  MEM:'.number_format($Mem).'B/'.number_format($Mem-$GLOBALS['varcache']['debug']['lastmem']).'B -->'."\n";
-            $GLOBALS['varcache']['debug']['lasttime'] = $Time;
-            $GLOBALS['varcache']['debug']['lastmem'] = $Mem;
-        }
-    }
-    PrintDebug('Config Loaded');
-
 /* Load & connect to MySQL */
     /* Check the configs exist */
     if(!isset($GLOBALS['config']['sql'], $GLOBALS['config']['sql']['host'], $GLOBALS['config']['sql']['username'], $GLOBALS['config']['sql']['password'], $GLOBALS['config']['sql']['database'], $GLOBALS['config']['sql']['prefix']))
-        die('Error: SQL configuration(s) missing in file config.php'); 
+        throw new SiteError('file.config.data', 'Missing MySQL server information');
+
+    /* Attempt to load the SQL class */
+    SP_Require(DIR_ROOT.'includes/class.sql.php');
 
     /* Create the SQL object */
-    require_once(DIR_INCLUDE.'class.sql.php');
-    $GLOBALS['sql'] = new SQL($GLOBALS['config']['sql']['host'], $GLOBALS['config']['sql']['username'], $GLOBALS['config']['sql']['password'], $GLOBALS['config']['sql']['database']);
-    PrintDebug('SQL Connected');
+    $SQL = new SQL($GLOBALS['config']['sql']['host'], $GLOBALS['config']['sql']['username'], $GLOBALS['config']['sql']['password'], $GLOBALS['config']['sql']['database']);
 
     /* Escape & set the SQL table prefix */
-    define('SQL_PREFIX', $GLOBALS['sql']->Escape($GLOBALS['config']['sql']['prefix']));
+    define('SQL_PREFIX', $SQL->Escape($GLOBALS['config']['sql']['prefix']));
     unset($GLOBALS['config']['sql']);
 
-/* Load settings */
-    $GLOBALS['settings'] = array();
-    $SettingsQuery = $GLOBALS['sql']->Query('SELECT * FROM '.SQL_PREFIX.'settings');
-    while($Row = $GLOBALS['sql']->FetchArray($SettingsQuery)) {
-        $GLOBALS['settings'][$Row['setting_name']] = $Row['setting_value'];
-        switch($Row['setting_value']) {
-            case 'true': $GLOBALS['settings'][$Row['setting_name']] = true; break;
-            case 'false': $GLOBALS['settings'][$Row['setting_name']] = false; break;
-        }
+/* Load the definitions file */
+    SP_Require(DIR_ROOT.'includes/definitions.php');
+
+/* Load settings from MySQL */
+    $Settings = array();
+    $SettingsQuery = $SQL->Query('SELECT * FROM '.SQL_SETTINGS);
+    while($SettingsRow = $SQL->FetchArray($SettingsQuery)) {
+        $Settings[$SettingsRow['Setting_Name']] = $SettingsRow['Setting_Value'];
     }
-    $GLOBALS['sql']->Free($SettingsQuery);
-    PrintDebug('Settings Loaded ('.count($GLOBALS['settings']).')');
+    $SQL->Free($SettingsQuery);
 
-/* Load definitions */
-    require_once(DIR_INCLUDE.'definitions.php');
-    PrintDebug('Definitions loaded');
+/* Attempt to load the translations class */
+    SP_Require(DIR_INCLUDE.'class.translations.php');
+    
+    /* Create the Translations object */
+    $Trans = new Translations(DIR_TRANSLATIONS, (isset($Settings['site_language']) && strlen($Settings['site_language']) >= 2) ? $Settings['site_language'] : 'en');
 
-/* Load translations */
-    /* Always load EN translations and then overwrite with other */
-    if(!file_exists(DIR_TRANSLATIONS.'translations.en.php'))
-        die('ERROR! Cannot find base English translation file.');
-    require_once(DIR_TRANSLATIONS.'translations.en.php');
-    PrintDebug('Loaded base English translations');
+    /* Load the base translations */
+    $Trans->Load('base', true);
 
-    /* Check site language */
-    if(isset($GLOBALS['settings']['site_lang']) && $GLOBALS['settings']['site_lang'] != '' && $GLOBALS['settings']['site_lang'] != 'en') {
-        if(file_exists(DIR_TRANSLATIONS.'translations.'.$GLOBALS['settings']['site_lang'].'.php')) {
-            require_once(DIR_TRANSLATIONS.'translations.'.$GLOBALS['settings']['site_lang'].'.php');
-            PrintDebug('Site language loaded as \''.$GLOBALS['settings']['site_lang'].'\'');
-        }
-    }
+/* Attempt to load the auth class */
 
-/* Load & initiate Steam class */
-    require_once(DIR_INCLUDE.'class.steam.php');
-    $GLOBALS['steam'] = new Steam();
-    PrintDebug('Steam Class Loaded');
 
-/* Load & initiate session/auth class */
-    require_once(DIR_INCLUDE.'class.auth.php');
-    $GLOBALS['auth'] = new Auth();
+/* Attempt to load the user class */
+    SP_Require(DIR_INCLUDE.'class.user.php');
+    
+    /* Create the User object */
+    $User = new User();
 
-    /* Check the current session */
-    $IsValidSession = $GLOBALS['auth']->ValidateSession();
-    if($IsValidSession) {
-        define('USER_LOGGEDIN', true);
-        if($GLOBALS['auth']->IsAdmin()) {
-            define('USER_ADMIN', true);
-            if($GLOBALS['auth']->HasAdminFlag($GLOBALS['settings']['auth_superadmin_flag']))
-                define('USER_SUPERADMIN', true);
-        }
-    }
+/* Attempt to load the theme class */
+    SP_Require(DIR_INCLUDE.'class.theme.php');
+    
+    /* Create the User object */
+    $ThemeName = 'SourcePunish';
+    $Theme = new Theme(DIR_THEMES, HTML_THEMES, $ThemeName);
+    
+    /* Create theme definitions */
+    define('THEME_NAME', $Theme->Name); // VAL
+    define('DIR_THEME', $Theme->Path);
+    define('HTML_THEME', $Theme->HTMLPath);
 
-    /* Session definition defaults */
-    if(!defined('USER_ADMIN')) define('USER_ADMIN', false);
-    if(!defined('USER_SUPERADMIN')) define('USER_SUPERADMIN', false);
-    if(!defined('USER_LOGGEDIN')) define('USER_LOGGEDIN', false);
-    PrintDebug('Auth Class Loaded'.(USER_LOGGEDIN?' & Checked as \''.$GLOBALS['auth']->GetUser64().'\'':''));
-
-/* Check & load main site theme */
-    $ThemeName = $GLOBALS['settings']['site_theme'];
-
-    /* Check the theme name is safe */
-    if(!preg_match('/^[a-z0-9_\-\.]+$/i', $ThemeName))
-        die('ERROR! Invalid theme file name.');
-
-    /* Check the theme file exists */
-    if(!file_exists(DIR_THEMES.$ThemeName.'/theme.php')) {
-        /* Log as an error ? */
-        /* Try the default theme */
-        if(!file_exists(DIR_THEMES.'SourcePunish/theme.php'))
-            die('ERROR! Cannot find user or default theme file.');
+/*************************
+|    System Functions    |
+*************************/
+    
+    /* Custom require function */
+    function SP_Require($File) {
+        if(file_exists($File))
+            return require_once($File);
         else
-            $ThemeName = 'SourcePunish';
+            throw new SiteError('file.missing', 'File "'.$File.'"');
     }
 
-    /* Set theme definitions */
-    define('THEME_CURRENT', $ThemeName); 
-    unset($ThemeName);
-    define('THEME_PATH', DIR_THEMES.THEME_CURRENT.'/');
-    define('HTML_THEME_PATH', HTML_ROOT.'themes/'.THEME_CURRENT.'/');
-    PrintDebug('Theme Selected as \''.THEME_CURRENT.'\'');
+    /* Shutdown Function */
+    function ScriptShutdown() {
+        global $SQL;
+        /* Ensure MySQL connection gets closed */
+        if(isset($SQL) && method_exists($SQL, 'Close'))
+            $SQL->Close();
 
-    /* Load * initiate theming class */
-    require_once(DIR_INCLUDE.'class.theming.php');
-    $GLOBALS['theme'] = new Theming();
-    PrintDebug('Theming Class Loaded');
-
-    /* Include default files and site theme */
-    require_once(DIR_THEMES.'default.php');
-    require_once(DIR_THEMES.'global.php');
-    require_once(THEME_PATH.'theme.php');
-    PrintDebug('Main Theme Files Loaded');
-
-/* Check & load sub-theme */
-    $SubthemeName = '';
-
-    /* Does the current theme support sub-themes? */
-    if(isset($GLOBALS['themeinfo']['subthemes']['enabled']) && $GLOBALS['themeinfo']['subthemes']['enabled'] == true) {
-        if(isset($GLOBALS['settings']['site_theme_subtheme']) && $GLOBALS['settings']['site_theme_subtheme'] != '') {
-            $SubthemeName = $GLOBALS['settings']['site_theme_subtheme'];
-
-            /* Check the sub-theme name is safe */
-            if(!preg_match('/^[a-z0-9_\-\.]+$/i', $SubthemeName))
-                die('ERROR! Invalid sub-theme file name.');
-
-            /* Check the sub-theme file exists */
-            if(!file_exists(THEME_PATH.'subthemes/'.$SubthemeName.'/subtheme.php')) {
-                /* Does the current theme require a sub-theme? */
-                if(isset($GLOBALS['themeinfo']['subthemes']['required']) && $GLOBALS['themeinfo']['subthemes']['required'] == true && isset($GLOBALS['themeinfo']['subthemes']['default'])) {
-                    $SubthemeName = $GLOBALS['themeinfo']['subthemes']['default'];
-
-                    /* Check the default sub-theme name is safe */
-                    if(!preg_match('/^[a-z0-9_\-\.]+$/i', $SubthemeName))
-                        die('ERROR! Invalid default sub-theme file name.');
-
-                    /* Check the default sub-theme file exists */
-                    if(!file_exists(THEME_PATH.'subthemes/'.$SubthemeName.'/subtheme.php'))
-                        die('ERROR! Cannot find user or default sub-theme file.');
-                }
-            }
-        } else {
-            if(isset($GLOBALS['themeinfo']['subthemes']['required']) && $GLOBALS['themeinfo']['subthemes']['required'] == true && isset($GLOBALS['themeinfo']['subthemes']['default'])) {
-                $SubthemeName = $GLOBALS['themeinfo']['subthemes']['default'];
-
-                /* Check the default sub-theme name is safe */
-                if(!preg_match('/^[a-z0-9_\-\.]+$/i', $SubthemeName))
-                    die('ERROR! Invalid default sub-theme file name.');
-
-                /* Check the default sub-theme file exists */
-                if(!file_exists(THEME_PATH.'subthemes/'.$SubthemeName.'/subtheme.php'))
-                    die('ERROR! Cannot find user or default sub-theme file.');
-            }
-        }
+        /* Use error handler to check for a fatal error */
+        if(class_exists('PHPError', false))
+            PHPError::CheckForFatality();
     }
 
-    /* Load sub-theme if set */
-    if($SubthemeName != '') {
-        /* set sub-theme definitons */
-        define('SUBTHEME_CURRENT', $SubthemeName); 
-        define('SUBTHEME_PATH', THEME_PATH.'subthemes/'.SUBTHEME_CURRENT.'/');
-        define('HTML_SUBTHEME_PATH', HTML_THEME_PATH.'subthemes/'.SUBTHEME_CURRENT.'/');
-        PrintDebug('Sub-theme Selected as \''.SUBTHEME_CURRENT.'\'');
-
-        require_once(SUBTHEME_PATH.'subtheme.php');
-        PrintDebug('Sub-Theme File Loaded');
-    }
-    unset($SubthemeName);
-
-/* Main site functions */
-    /* Function to run at the end of script execution */
-    function SP_ScriptShutdown() {
-        $GLOBALS['sql']->Close();
-        PrintDebug('End, PEAK MEM:'.number_format(memory_get_peak_usage()).'B');
-    }
-
-    /* Check if website is using SSL */
-    function IsSSL() {
-        if(isset($_SERVER['HTTPS']) && (strtolower($_SERVER['HTTPS']) == 'on' || $_SERVER['HTTPS'] == '1')) {
-            return true;
-        } else if(isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == '443') {
-            return true;
-        }
-        return false;
-    }
-
-    /* Validate a variable using flags */ 
+    /* Validate a variable */ 
     function CheckVar($Var, $Flags = 0) {
-        if(!($Flags & SP_VAR_EMPTY) && $Var == '')
-            return false;
+        /* Int / float */
         if($Flags & SP_VAR_INT || $Flags & SP_VAR_FLOAT) {
             if($Flags & SP_VAR_INT && !preg_match('/^[-+]?[0-9]+$/', $Var))
                 return false;
             if($Flags & SP_VAR_FLOAT && !preg_match('/^[-+]?[0-9]*\.?[0-9]+$/', $Var) )
                 return false;
-            if(!($Flags & SP_VAR_NEGATIVE) && $Var < 0)
+            if(!($Flags & SP_VAR_NEGATIVE) && (float)$Var < 0)
                 return false;
+            return true;
         }
-        return true;
-    }
-
-    /* Check if variable is a number, to depreciate */
-    function IsNum($Number) {
-        if(preg_match('/^[0-9]+$/', $Number))
+        /* IP's */
+        if((($Flags & SP_VAR_IP_V4) || ($Flags & SP_VAR_IP_BOTH)) && filter_var($Var, FILTER_VALIDATE_IP, array('flags'=>FILTER_FLAG_IPV4)) !== false)
             return true;
+        if((($Flags & SP_VAR_IP_V6) || ($Flags & SP_VAR_IP_BOTH)) && filter_var($Var, FILTER_VALIDATE_IP, array('flags'=>FILTER_FLAG_IPV6)) !== false)
+            return true;
+        
         return false;
-    }
-
-    /* Check if input is a valid IP adress, should move to 'CheckVar'? */
-    function IsValidIP($IPAddress, $Flags = SP_IP_BOTH) {
-        if($Flags & SP_IP_V4 || $Flags & SP_IP_BOTH) {
-            if(filter_var($IPAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
-                return true;
-        }
-        if($Flags & SP_IP_V6 || $Flags & SP_IP_BOTH) {
-            if(filter_var($IPAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6))
-                return true;
-        }
-        return false;
-    }
-
-    /* Check if user has given auth level */
-    function HasAuthLevel($Level) {
-        if($Level == 0)
-            return true;
-        else if($Level == 1 && !USER_LOGGEDIN)
-            return true;
-        else if($Level == 2 && USER_LOGGEDIN)
-            return true;
-        else if($Level == 3 && USER_ADMIN)
-            return true;
-        else if($Level == 4 && USER_SUPERADMIN)
-            return true;
-        return false;
-    }
-
-    /* Return current auth level as number */
-    function CurrentAuthLevel() {
-        if(!USER_LOGGEDIN)
-            return 1;
-        else if(USER_SUPERADMIN)
-            return 4;
-        else if(USER_ADMIN)
-            return 3;
-        else if(USER_LOGGEDIN)
-            return 2;
-        else
-            return false;
-    }
-
-    /* Redirect user to given URL */
-    function Redirect($URL = '') {
-        if($URL == '')
-            $URL = ParseURL('^');
-        else
-            $URL = ParseURL($URL);
-        header('Location: '.$URL);
-        die(sprintf($GLOBALS['trans'][2009], $URL));
     }
 
     /* Make input HTML safe */
@@ -358,182 +178,171 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
                 $Return[$Key] = SpecialChars($Value);
             }
         } else
-            $Return = htmlspecialchars($Input);
+            $Return = htmlspecialchars($Input, ENT_QUOTES | ENT_HTML401, 'UTF-8');
         return $Return;
     }
 
     /* Parse internal URL */
-    function ParseURL($URL) {
+    function ParseURL($URL, $Params = array()) {
         if(substr($URL, 0, 1) == '^') {
             if(substr($URL, 1) == 'index' || $URL == '^')
                 return HTML_ROOT.URL_PAGE;
-            return HTML_ROOT.URL_PAGE.URL_QUERY.substr($URL, 1);
+
+            $URL = HTML_ROOT.URL_PAGE.URL_QUERY.substr($URL, 1);
         }
+        if(is_array($Params) && !empty($Params))
+            $URL .= (strpos($URL, '?')===false?'?':'&').http_build_query($Params);
+
         return $URL;
     }
 
-    /* Parse text for translations, BBCodes etc */
-    function ParseText($Text, $Trans = true, $BBCode = false, $AllowHTML = false) {
-        if(preg_match_all('/#TRANS_([0-9]{3,4})/', $Text, $Matches)) {
+    /**/
+    function ParseText($Text) {
+        global $Trans;
+        /* Translations */
+        if(preg_match_all('/@T:([a-z0-9-_]+[.][a-z0-9-_.]+)/i', $Text, $Matches)) {
             foreach($Matches[1] as $Key => $Match) {
-                if(isset($GLOBALS['trans'][(int)$Match])) {
-                    $Text = preg_replace('/#TRANS_'.$Match.'/', $GLOBALS['trans'][(int)$Match], $Text);
-                }
+                $Text = preg_replace('/@T:'.$Match.'/', $Trans->T($Match), $Text);
             }
         }
-        if(!$AllowHTML)
-            $Text = SpecialChars($Text);
-        if($BBCode) {
-            $Text = preg_replace('#\[b\](.*?)\[/b\]#si', '<span class="bold">\1</span>', $Text);
-            $Text = preg_replace('#\[u\](.*?)\[/u\]#si', '<span class="underscore">\1</span>', $Text);
-            $Text = preg_replace('#\[i\](.*?)\[/i\]#si', '<span class="italic">\1</span>', $Text);
-            $Text = preg_replace('#\[s\](.*?)\[/s\]#si', '<span class="strike">\1</strike>', $Text);
-            $Text = preg_replace('#\[color=([\#a-f0-9]*?)\](.*?)\[/color\]#si', '<span style=\'color:\\1\'>\\2</span>', $Text);
-            $Text = preg_replace('#\[br\]#si', '<br />', $Text);
-            $Text = preg_replace('#\[center\](.*?)\[/center\]#si', '<div class="center">\1</div>', $Text);
-            $Text = preg_replace('#\[img\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)(\.(jpg|jpeg|gif|png))([\r\n]*)\[/img\]#sie', "'<img src=\'\\1\\2'.str_replace(array('?','&amp;','&','='),'','\\3').'\\4\' alt=\'\\1\\2'.str_replace(array('?','&amp;','&','='),'','\\3').'\\4\' />'", $Text);
-            $Text = preg_replace('#\[url\]([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf($GLOBALS['trans'][3002], "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\2\\3</a>'", $Text);
-            $Text = preg_replace('#\[url=([\r\n]*)(?:([a-z0-9]*:\/{2}))?([a-z0-9\-_\/\.\+?&\#@:;\!=]*?)([\r\n]*)\](.*?)\[/url\]#sie', "'<a href=\"\\2\\3\" title=\"".sprintf($GLOBALS['trans'][3002], "\\2\\3")."\" target=\"_blank\" rel=\"nofollow\">\\5</a>'", $Text);
-        }
-        return $Text;
-    }
-    
-    /* Parse a user input and remove unneeded space, characters, html etc */
-    function ParseUserInput($Text, $Limit = 0, $Flags = 0) {
-        if(!($Flags & SP_INPUT_NOTRIM)) {
-            $Text = trim($Text);
-            $Text = preg_replace('/ +/', ' ', $Text);
-            $Text = preg_replace('/(\r?\n){2,}/', "\n\n", $Text);
-        }
-        if($Limit > 0)
-            $Text = substr($Text, 0, $Limit);
-        /*if(!($Flags & SP_INPUT_HTML))
-            $Text = SpecialChars($Text);*/
-        if($Flags & SP_INPUT_ESCAPE)
-            $Text = $GLOBALS['sql']->Escape($Text);
 
+        $Text = trim($Text);
         return $Text;
     }
+
+    /* Redirect page to given URL */
+    function Redirect($URL = '^', $Params = array()) {
+        $URL = ParseURL($URL, $Params);
+        header('Location: '.$URL);
+        if(isset($Trans) && method_exists($Trans, 'T'))
+            die($Trans->T('base.redirect', array('URL'=>$URL)));
+        else
+            die('Redirecting to: '.$URL);
+    }
+
+/******************************
+|    Application Functions    |
+******************************/
 
     /* Get GeoIP country information for IP address */
     function SP_GeoIPCountry($IP) {
-        if(!IsValidIP($IP, SP_IP_V4))
+        global $SQL;
+        if(!CheckVar($IP, SP_VAR_IP_V4))
             return false;
         $CountryInfo = array();
-        $IpInt = $GLOBALS['sql']->Escape(sprintf("%u", ip2long($IP)));
-        $GeoIPQuery = $GLOBALS['sql']->Query_FetchArray('SELECT geoip_country_code, geoip_country FROM '.SQL_GEOIP.' FORCE INDEX(geoip_locid_end) WHERE geoip_locid_start <= '.$IpInt.' AND geoip_locid_end >= '.$IpInt.' LIMIT 1');
-        if(empty($GeoIPQuery) || !isset($GeoIPQuery['geoip_country_code'], $GeoIPQuery['geoip_country']))
+        $IPLong = $SQL->Escape(sprintf("%u", ip2long($IP)));
+        $GeoIPQuery = $SQL->Query_FetchArray('SELECT Geoip_Country_Code, Geoip_Country FROM '.SQL_GEOIP.' FORCE INDEX(Geoip_Locid_Start) WHERE Geoip_Locid_Start <= '.$IPLong.' AND Geoip_Locid_End >= '.$IPLong.' LIMIT 1');
+        if(empty($GeoIPQuery) || !isset($GeoIPQuery['Geoip_Country_Code'], $GeoIPQuery['Geoip_Country']))
             return false;
-        $CountryInfo['country'] = $GeoIPQuery['geoip_country'];
-        $CountryInfo['country_code'] = $GeoIPQuery['geoip_country_code'];
+        $CountryInfo['country'] = $GeoIPQuery['Geoip_Country'];
+        $CountryInfo['country_code'] = $GeoIPQuery['Geoip_Country_Code'];
         $CountryInfo['country_flag'] = HTML_IMAGES_FLAGS.strtolower($CountryInfo['country_code']).'.png';
         return $CountryInfo;
     }
 
-    /* Format & build a tabling containing a punishment list */
-    function SP_BuildPunishTable($Rows, $Class = 'table-punish', $ID = '') {
-        $Table = array('headings'=>array(), 'rows'=>array(), 'class'=>$Class, 'id'=>$ID);
-        $Table['headings'] = array(
-            array('content'=>ucfirst($GLOBALS['trans'][1100]), 'class'=>'col-date'),
-            array('content'=>ucfirst($GLOBALS['trans'][1101]), 'class'=>'col-server'),
-            array('content'=>ucfirst($GLOBALS['trans'][1206]), 'class'=>'col-loc'),
-            array('content'=>ucfirst($GLOBALS['trans'][1102]), 'class'=>'col-player'),
-            array('content'=>ucfirst($GLOBALS['trans'][1103]), 'class'=>'col-type'),
-            array('content'=>ucfirst($GLOBALS['trans'][1104]), 'class'=>'col-reason'),
-            array('content'=>ucfirst($GLOBALS['trans'][1105]), 'class'=>'col-length')
-        );
-        foreach($Rows as $Row) {
-            $Server = SP_GetServerInfo($Row['Punish_Server_ID']);
-            if(isset($Row['Punish_Player_IP'])) {
-                $GeoIPQuery = SP_GeoIPCountry($Row['Punish_Player_IP']);
-                if($GeoIPQuery !== false) {
-                    $Row['Punish_Player_Country_Flag'] = '<img src="'.$GeoIPQuery['country_flag'].'" title="'.$GeoIPQuery['country'].'" alt="'.$GeoIPQuery['country_code'].'" />';
-                }
-                unset($GeoIPQuery);
-            }
-            $ATime = array();
-            $Time = SP_LengthString($Row['Punish_Length']);
-            if($Row['UnPunish'] == 1) {
-                $ATime = array('content'=>ucfirst($GLOBALS['trans'][1140]), 'custom'=>'title="'.ucfirst($GLOBALS['trans'][1140]).'"', 'class'=>'removed');
-            } else if(($Row['Punish_Time']+($Row['Punish_Length']*60) < time()) && $Row['Punish_Length'] > 0) {
-                $ATime = array('content'=>$Time, 'custom'=>'title="'.ucfirst($GLOBALS['trans'][1139]).'"', 'class'=>'expired');
-            } else if(($Row['Punish_Length'] == 0 && $Row['Punish_Type'] == 'kick') || $Row['Punish_Length'] == -1) {
-                $ATime = array('content'=>SP_LengthString(-1), 'class'=>'notapplicable');
-            } else if($Row['Punish_Length'] == 0) {
-                $ATime = array('content'=>$Time, 'class'=>'permanent');
-            } else {
-                $ATime = array('content'=>$Time, 'custom'=>'title="'.ucfirst($GLOBALS['trans'][1158]).'"', 'class'=>'active');
-            }
-            unset($Time);
-            $Table['rows'][] = array('cols'=>array(
-                array('content'=>sprintf($GLOBALS['trans'][3003], ucwords(SP_PrintTimeDiff(SP_TimeDiff(time()-$Row['Punish_Time']), 1))), 'custom'=>'title="'.date(DATE_FORMAT, $Row['Punish_Time']).'"'),
-                array('content'=>'<img alt="'.$Server['mod']['short'].'" title="'.$Server['name'].'" src="'.HTML_IMAGES_GAMES.$Server['mod']['image'].'" />'),
-                array('content'=>(isset($Row['Punish_Player_Country_Flag']))?$Row['Punish_Player_Country_Flag']:''),
-                array('content'=>SpecialChars($Row['Punish_Player_Name'])),
-                array('content'=>SpecialChars(ucwords($Row['Punish_Type']))),
-                array('content'=>SpecialChars($Row['Punish_Reason'])),
-                $ATime
-            ), 'custom'=>'data-pid="'.$Row['Punish_ID'].'"');
-            unset($ATime);
+    /* Time ago calculation */ 
+    function SP_TimeDiff($Time) {
+        $Time = (int)$Time;
+        $TimeArray = array();
+
+        if($Time < 1) {
+            $TimeArray['second'] = 0;
+            return $TimeArray;
         }
-        return $GLOBALS['theme']->BuildTable($Table);
+
+        if($Time > 31556900) {
+            $TimeArray['year'] = floor($Time / 31556900);
+            $Time = $Time % 31556900;
+        }
+        if($Time > 2629740) {
+            $TimeArray['month'] = floor($Time / 2629740);
+            $Time = $Time % 2629740;
+        }
+        if($Time > 604800) {
+            $TimeArray['week'] = floor($Time / 604800);
+            $Time = $Time % 604800;
+        }
+        if($Time > 86400) {
+            $TimeArray['day'] = floor($Time / 86400);
+            $Time = $Time % 86400;
+        }
+        if($Time > 3600) {
+            $TimeArray['hour'] = floor($Time / 3600);
+            $Time = $Time % 3600;
+        }
+        if($Time > 60) {
+            $TimeArray['minute'] = floor($Time / 60);
+            $Time = $Time % 60;
+        }
+        if($Time > 0) {
+            $TimeArray['second'] = $Time;
+        }
+        return $TimeArray;
     }
 
-    /* Check if a custom page exists */
-    function SP_CustomPageExists($Ref) {
-        $PageRef = $GLOBALS['sql']->Escape($Ref);
-        $PageQuery = $GLOBALS['sql']->Query_Rows('SELECT page_ref FROM '.SQL_PAGES.' WHERE page_ref = \''.$PageRef.'\' LIMIT 1');
-        if($PageQuery == 1)
-            return true;
-        return false;
+    /* Print 'TimeDiff' as human readable time */
+    function SP_PrintTimeDiff($TimeAgo, $Count = 0) {
+        global $Trans;
+        $TimeString = '';
+        $i = 1;
+        if($Count < 0) {
+            if(abs($Count) >= count($TimeAgo))
+                $Count = 1;
+            else
+                $Count = count($TimeAgo) + $Count;
+        }
+        foreach($TimeAgo as $STime => $Time) {
+            if($i > 1)
+                $TimeString .= ', ';
+            $TimeString .= (($Time>1 || $Time==0)?$Trans->t('time.'.$STime.'.plural', array('time'=>$Time)):$Trans->t('time.'.$STime, array('time'=>$Time)));
+            if($Count != 0 && $i >= $Count)
+                return ucfirst($TimeString);
+            $i++;
+        }
+        return $TimeString;
     }
 
-    /* Get the content of a custom page */
-    function SP_GetCustomPage($Ref) {
-        $PageRef = $GLOBALS['sql']->Escape($Ref);
-        $PageQuery = $GLOBALS['sql']->Query_FetchArray('SELECT * FROM '.SQL_PAGES.' WHERE page_ref = \''.$PageRef.'\' LIMIT 1');
-        if(HasAuthLevel($PageQuery['page_auth'])) {
-            $PageQuery['title'] = ParseText($PageQuery['page_title']);
-            unset($PageQuery['page_title']);
-            $PageQuery['content'] = ParseText($PageQuery['page_content'], true, ($PageQuery['page_format']==1?true:false), ($PageQuery['page_format']==2?true:false));
-            unset($PageQuery['page_content'], $PageQuery['page_format']);
-        } else {
-            unset($PageQuery);
-            $PageQuery['title'] = '';
-            $PageQuery['content'] = $GLOBALS['trans'][2010];
-        }
-        unset($PageQuery['page_auth']);
-        return $PageQuery;
+    /* Get formatted punishment length string */
+    function SP_LengthString($Time, $Count = 1) {
+        global $Trans;
+        if($Time == -1)
+            return ucfirst($Trans->t('base.na'));
+        else if($Time == 0)
+            return ucfirst($Trans->t('time.permanent'));
+
+        $GetTime = SP_TimeDiff($Time*60);
+        return SP_PrintTimeDiff($GetTime, $Count);
     }
 
     /* Get information on a given server */
     function SP_GetServerInfo($ServerID, $ReturnUnknow = true) {
-        if(isset($GLOBALS['varcache']['servers'][$ServerID]))
-            return $GLOBALS['varcache']['servers'][$ServerID];
+        global $GlobalCache, $SQL, $Trans;
+        if(isset($GlobalCache['servers'][$ServerID]))
+            return $GlobalCache['servers'][$ServerID];
         if($ServerID == 0) {
-            $GetServerInfo['name'] = $GLOBALS['trans'][3006];
-            $GetServerInfo['host'] = $GLOBALS['trans'][3007];
-            $GetServerInfo['ip'] = $GLOBALS['trans'][3007];
-            $GetServerInfo['mod']['id'] = $GLOBALS['trans'][3007];
-            $GetServerInfo['mod']['short'] = 'Web';
-            $GetServerInfo['mod']['name'] = 'Web Panel';
+            $GetServerInfo['name'] = $Trans->t('server.web');
+            $GetServerInfo['host'] = $Trans->t('base.na');
+            $GetServerInfo['ip'] = $Trans->t('base.na');
+            $GetServerInfo['mod']['id'] = $Trans->t('base.na');
+            $GetServerInfo['mod']['short'] = $Trans->t('server.web.short');
+            $GetServerInfo['mod']['name'] = $Trans->t('server.web');
             $GetServerInfo['mod']['image'] = 'web.png';
-            $GLOBALS['varcache']['servers'][$ServerID] = $GetServerInfo;
+            $GlobalCache['servers'][$ServerID] = $GetServerInfo;
             return $GetServerInfo;
         }
-        $ServerID = $GLOBALS['sql']->Escape($ServerID);
-        $GetServerInfo_Row = $GLOBALS['sql']->Query_FetchArray('SELECT s.*, m.* FROM '.SQL_SERVERS.' s LEFT JOIN '.SQL_SERVER_MODS.' m ON m.Mod_ID = s.Server_Mod WHERE s.Server_ID = \''.$ServerID.'\' LIMIT 1');
+        $ServerID = $SQL->Escape($ServerID);
+        $GetServerInfo_Row = $SQL->Query_FetchArray('SELECT s.*, m.* FROM '.SQL_SERVERS.' s LEFT JOIN '.SQL_SERVER_MODS.' m ON m.Mod_ID = s.Server_Mod WHERE s.Server_ID = \''.$ServerID.'\' LIMIT 1');
         if(empty($GetServerInfo_Row)) {
             if(!$ReturnUnknow)
                 return false;
             $GetServerInfo['name'] = 'Unknown';
-            $GetServerInfo['host'] = 'N/A';
-            $GetServerInfo['ip'] = 'N/A';
-            $GetServerInfo['mod']['id'] = 'N/A';
-            $GetServerInfo['mod']['short'] = 'N/A';
-            $GetServerInfo['mod']['name'] = 'Unknown';
+            $GetServerInfo['host'] = $Trans->t('base.na');
+            $GetServerInfo['ip'] = $Trans->t('base.na');
+            $GetServerInfo['mod']['id'] = $Trans->t('base.na');
+            $GetServerInfo['mod']['short'] = $Trans->t('base.na');
+            $GetServerInfo['mod']['name'] = ucfirst($Trans->t('base.na'));
             $GetServerInfo['mod']['image'] = 'unknown.png';
-            $GLOBALS['varcache']['servers'][$ServerID] = $GetServerInfo;
+            $GlobalCache['servers'][$ServerID] = $GetServerInfo;
             return $GetServerInfo;
         }
         $GetServerInfo['host'] = $GetServerInfo_Row['Server_Host'];
@@ -549,113 +358,35 @@ if(preg_match('/core.php/i', $_SERVER['PHP_SELF'])) die('Access Denied!');
             $GetServerInfo['mod']['name'] = 'Unknown';
             $GetServerInfo['mod']['image'] = 'unknown.png';
         }
-        $GLOBALS['varcache']['servers'][$ServerID] = $GetServerInfo;
+        $GlobalCache['servers'][$ServerID] = $GetServerInfo;
         return $GetServerInfo;
     }
 
-    /* Return server IP & port from an address string */
-    function SP_GetAddressFromString($Address) {
-        $Addr['port'] = 27015;
-        $Addr['address'] = $Address;
-        /* Get port number */
-        if(strpos($Address, ':') !== false) {
-            $IPTMP = explode(':', $Address, 2);
-            $Addr['address'] = $IPTMP[0];
-            if(IsNum((int)$IPTMP[1]))
-                $Addr['port'] = (int)$IPTMP[1];
-        }
-        return $Addr;
+    /* Check if a custom page exists */
+    function SP_CustomPageExists($Ref) {
+        global $SQL;
+        $PageQuery = $SQL->Query_Rows('SELECT 1 FROM '.SQL_PAGES.' WHERE page_ref=\''.$SQL->Escape($Ref).'\' LIMIT 1');
+        if($PageQuery == 1)
+            return true;
+        return false;
     }
 
-    /* Get formatted punishment length string */
-    function SP_LengthString($Time, $Count = 1) {
-        if($Time == -1)
-            return ucfirst($GLOBALS['trans'][3007]);
-        else if($Time == 0)
-            return ucfirst($GLOBALS['trans'][1141]);
-        $GetTime = SP_TimeDiff($Time*60, true);
-        return SP_PrintTimeDiff($GetTime, $Count, true);
+    /* Get the content of a custom page */
+    function SP_GetCustomPage($Ref) {
+        global $SQL, $Trans, $User;
+        $PageRef = $SQL->Escape($Ref);
+        $PageQuery = $SQL->Query_FetchArray('SELECT * FROM '.SQL_PAGES.' WHERE page_ref=\''.$PageRef.'\' LIMIT 1');
+        if(empty($PageQuery['Page_Permission']) || (empty($PageQuery['Page_Permission']) && $User->Has($PageQuery['Page_Permission']))) {
+            $PageQuery['title'] = ParseText($PageQuery['Page_Title']);
+            unset($PageQuery['Page_Title']);
+            $PageQuery['text'] = ParseText($PageQuery['Page_Content'], true, ($PageQuery['Page_Format']==1?true:false), ($PageQuery['Page_Format']==2?true:false));
+            unset($PageQuery['Page_Content'], $PageQuery['Page_Format']);
+        } else {
+            unset($PageQuery);
+            $PageQuery['title'] = '';
+            $PageQuery['text'] = $Trans->t('base.nopermission');
+        }
+        unset($PageQuery['Page_Permission']);
+        return $PageQuery;
     }
-
-    /* Time ago calculation */ 
-    function SP_TimeDiff($FTime, $Trans = true) {
-        $Time = (int)$FTime;
-        $TimeArray = array();
-
-        if($Time < 1) {
-            $TimeArray[($Trans?1154:'second')] = 0;
-            return $TimeArray;
-        }
-
-        if($Time > 31556900) {
-            $TimeArray[($Trans?1142:'year')] = floor($Time / 31556900);
-            $Time = $Time % 31556900;
-        }
-        if($Time > 2629740) {
-            $TimeArray[($Trans?1144:'month')] = floor($Time / 2629740);
-            $Time = $Time % 2629740;
-        }
-        if($Time > 604800) {
-            $TimeArray[($Trans?1146:'week')] = floor($Time / 604800);
-            $Time = $Time % 604800;
-        }
-        if($Time > 86400) {
-            $TimeArray[($Trans?1148:'day')] = floor($Time / 86400);
-            $Time = $Time % 86400;
-        }
-        if($Time > 3600) {
-            $TimeArray[($Trans?1150:'hour')] = floor($Time / 3600);
-            $Time = $Time % 3600;
-        }
-        if($Time > 60) {
-            $TimeArray[($Trans?1152:'minute')] = floor($Time / 60);
-            $Time = $Time % 60;
-        }
-        if($Time > 0) {
-            $TimeArray[($Trans?1154:'second')] = $Time;
-        }
-        return $TimeArray;
-    }
-
-    /* Print 'TimeDiff' as human readable time */
-    function SP_PrintTimeDiff($TimeAgo, $Count = 0, $Trans = true) {
-        $TimeString = '';
-        $i = 1;
-        if($Count < 0) {
-            if(abs($Count) >= count($TimeAgo))
-                $Count = 1;
-            else
-                $Count = count($TimeAgo) + $Count;
-        }
-        foreach($TimeAgo as $STime => $Time) {
-            /*f($Time > 0) {*/
-            if(true) {
-                if($i > 1)
-                    $TimeString .= ', ';
-                if($Trans)
-                    $TimeString .= $Time.' '.(($Time>1 || $Time==0)?$GLOBALS['trans'][$STime+1]:$GLOBALS['trans'][$STime]);
-                else
-                    $TimeString .= $Time.' '.(($Time>1 || $Time==0)?$STime.'s':$STime);
-                if($Count != 0 && $i >= $Count)
-                    return ucfirst($TimeString);
-                $i++;
-            }
-        }
-        return $TimeString;
-    }
-
-    /* Get appeal status text */
-    function SP_AppealStatusText($StatusCode) {
-        $Text = '';
-        switch($StatusCode) {
-            case 0: $Text = $GLOBALS['trans'][1505]; break;
-            case 1: $Text = $GLOBALS['trans'][1506]; break;
-            case 2: $Text = $GLOBALS['trans'][1507]; break;
-            case 3: $Text = $GLOBALS['trans'][1508]; break;
-        }
-        return $Text;
-    }
-
-/* Finial core debug message */
-    PrintDebug('End Core');
 ?>
