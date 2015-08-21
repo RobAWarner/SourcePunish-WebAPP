@@ -37,8 +37,7 @@ try {
     }
     
     $Theme->RenderPage();
-    
-    //echo '</body></html>';
+
 } catch (Exception $e) {}
 
 echo "\n".'<!-- Peak Memory Usage: '.number_format(memory_get_peak_usage()).' Bytes -->';
