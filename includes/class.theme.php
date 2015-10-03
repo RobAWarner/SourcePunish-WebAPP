@@ -1,101 +1,92 @@
 <?php
-/*--------------------------------------------------------+
-| SourcePunish WebApp                                     |
-| Copyright (C) 2015 https://sourcepunish.net             |
-+---------------------------------------------------------+
-| This program is free software and is released under     |
-| the terms of the GNU Affero General Public License      |
-| version 3 as published by the Free Software Foundation. |
-| You can redistribute it and/or modify it under the      |
-| terms of this license, which is included with this      |
-| software as agpl-3.0.txt or viewable at                 |
-| http://www.gnu.org/licenses/agpl-3.0.html               |
-+--------------------------------------------------------*/
+/*{{BOILER}}*/
 
-if(!defined('SP_LOADED')) die('Access Denied!');
+/*{{CORE_REQUIRED}}*/
+
+/* TODO: Render logo? */
 
 class Theme {
     public $Name = '';
     public $Path = '';
     public $HTMLPath = '';
+    private $ThemeLoaded = false;
     private $BaseDirectory = null;
     private $BaseHTMLDirectory = null;
     private $ThemeDefaults = '_defaults';
     private $ThemeFallback = 'SourcePunish';
-    private $ComponentMap = array(
-        'page'=>array('file'=>'theme.page.php', 'func'=>'Theme_Page'),
-        'content'=>array('file'=>'theme.content.php', 'func'=>'Theme_Content'),
-        'alert'=>array('file'=>'theme.alert.php', 'func'=>'Theme_Alert'),
-        'nav.user'=>array('file'=>'theme.nav.user.php', 'func'=>'Theme_Nav_User'),
-        'nav.main'=>array('file'=>'theme.nav.main.php', 'func'=>'Theme_Nav_Main'),
-        'form.punish.search'=>array('file'=>'theme.form.punish.search.php', 'func'=>'Theme_Form_Punish_Search'),
-        'form.punish.edit'=>array('file'=>'theme.form.punish.edit.php', 'func'=>'Theme_Form_Punish_Edit'),
-        'form.punish.create'=>array('file'=>'theme.form.punish.create.php', 'func'=>'Theme_Form_Punish_Create'),
-        'table.punish.list'=>array('file'=>'theme.table.punish.list.php', 'func'=>'Theme_Table_Punish_List'),
-        'paginate'=>array('file'=>'theme.paginate.php', 'func'=>'Theme_Paginate'),
-        'image'=>array('file'=>'theme.image.php', 'func'=>'Theme_Image'),
-    );
 
-    public function __construct($ThemeDirectory, $ThemeHTMLDirectory, $ThemeName = '') {
+    public function __construct($ThemeDirectory, $ThemeHTMLDirectory) {
         /* Check theme directory */
-        if(substr($ThemeDirectory, -1) !== '/' && substr($ThemeDirectory, -1) !== '\\')
-            $ThemeDirectory .= '/';
+        $ThemeDirectory = FilePath($ThemeDirectory);
+
         if(!file_exists($ThemeDirectory))
-            throw new SiteError('folder.missing', '"/themes" directory');
+            throw new SiteError('theme.basedir.missing', 'Themes directory "/themes" is missing or inaccessable');
+
         $this->BaseDirectory = $ThemeDirectory;
 
         /* Check theme HTML directory */
         if(substr($ThemeHTMLDirectory, -1) !== '/' && substr($ThemeHTMLDirectory, -1) !== '\\')
             $ThemeHTMLDirectory .= '/';
         $this->BaseHTMLDirectory = $ThemeHTMLDirectory;
+    }
 
+    public function Load($ThemeName) {
         /* Check theme */
         if(empty($ThemeName) || !$this->_ValidString($ThemeName) || !$this->_ThemeExists($ThemeName)) {
             /* Try fallback theme */
             if(!$this->_ThemeExists($this->ThemeFallback))
-                throw new SiteError('theme.missing', 'Could not load theme "'.$ThemeName.'" or the fallback "'.$this->ThemeFallback.'" theme');
+                throw new SiteError('theme.dir.missing', 'Could not load theme "'.$ThemeName.'" or the fallback "'.$this->ThemeFallback.'" theme as their directories are missing');
             else
                 $ThemeName = $this->ThemeFallback;
         }
 
         /* Set theme variables */
         $this->Name = $ThemeName;
-        $this->Path = $this->BaseDirectory.$ThemeName.'/';
+        $this->Path = $this->BaseDirectory.$ThemeName.SP_PS;
         $this->HTMLPath = $this->BaseHTMLDirectory.$ThemeName.'/';
 
         /* Load theme init */
         if(file_exists($this->Path.'theme.init.php'))
             require_once($this->Path.'theme.init.php');
+
+        $this->ThemeLoaded = true;
     }
 
-    public function Render($ThemeComponent, $Data = array()) {
-        if(!is_array($Data))
-            return '';
-        if(!isset($this->ComponentMap[$ThemeComponent]))
-            return '';
-
-        if(!function_exists($this->ComponentMap[$ThemeComponent]['func'])) {
-            if($this->_CompontentExists($this->ComponentMap[$ThemeComponent]['file']))
-                require_once($this->Path.$this->ComponentMap[$ThemeComponent]['file']);
-            else {
-                if($this->_CompontentExists($this->ComponentMap[$ThemeComponent]['file'], true))
-                    require_once($this->BaseDirectory.$this->ThemeDefaults.'/'.$this->ComponentMap[$ThemeComponent]['file']);
-                else
-                    return '';
-            }
-
-            if(!function_exists($this->ComponentMap[$ThemeComponent]['func']))
+    public function Render($ThemeComponent, $Data = array(), $Required = false) {
+        if(!$this->ThemeLoaded || !is_array($Data) || !$this->_ValidString($ThemeComponent)) {
+            if($Required)
+                throw new SiteError('theme.component.invalid', 'Invalid theme component render call for "'.$ThemeComponent.'"');
+            else
                 return '';
         }
 
-        $Return = call_user_func($this->ComponentMap[$ThemeComponent]['func'], $Data);
+        $FuncName = $this->_ComponentFuncName($ThemeComponent);
+
+        if(!function_exists($FuncName)) {
+            $ComponentFile = $this->_CompontentFile($ThemeComponent);
+            if($ComponentFile === false) {
+                $ComponentFile = $this->_CompontentFile($ThemeComponent, true);
+                if($ComponentFile === false) {
+                    if($Required)
+                        throw new SiteError('theme.component.missing', 'Could not load a required theme component "'.$ThemeComponent.'"');
+                    else
+                        return '';
+                }
+            }
+            require_once($ComponentFile);
+        }
+
+        if(!function_exists($FuncName))
+            return '';
+
+        $Return = call_user_func($FuncName, $Data);
         if($Return === false)
             return '';
         else
             return $Return;
     }
 
-    public function Attr($MainArray) {
+    public function PrintAttr($MainArray) {
         if(!isset($MainArray['attrs']))
             return '';
         $Attributes = $MainArray['attrs'];
@@ -147,23 +138,34 @@ class Theme {
     *****************************************/
 
     private function _ThemeExists($ThemeName) {
-        if(file_exists($this->BaseDirectory.$ThemeName.'/') === true)
+        if(file_exists($this->BaseDirectory.$ThemeName.SP_PS) === true)
             return true;
         else
             return false;
     }
 
     private function _ValidString($String) {
-        return preg_match('#^[a-z0-9-_+.]+$#i', $String);
+        return preg_match('#^[a-z0-9-_.]+$#i', $String);
     }
 
-    private function _CompontentExists($ComponentFile, $TryDefault = false) {
+    private function _ComponentFuncName($ComponentName) {
+        $ComponentName = str_replace('.', '_', $ComponentName);
+        $ComponentName = preg_replace('/[^a-z0-9-_]/i', '', $ComponentName);
+        $ComponentName = str_replace('_', ' ', $ComponentName);
+        $ComponentName = ucwords($ComponentName);
+        $ComponentName = str_replace(' ', '_', $ComponentName);
+        $ComponentName = 'Theme_'.$ComponentName;
+        return $ComponentName;
+    }
+
+    private function _CompontentFile($ComponentName, $TryDefault = false) {
         if($TryDefault)
-            $ComponentPath = $this->BaseDirectory.$this->ThemeDefaults.'/';
+            $ComponentPath = $this->BaseDirectory.$this->ThemeDefaults.SP_PS;
         else
             $ComponentPath = $this->Path;
-        if(file_exists($ComponentPath.$ComponentFile) === true)
-            return true;
+        $ComponentFile = $ComponentPath.'theme.'.$ComponentName.'.php';
+        if(file_exists($ComponentFile) === true)
+            return $ComponentFile;
         else
             return false;
     }
@@ -241,7 +243,7 @@ class Theme {
     private function _BuildTitle() {
         $Build = implode(' '.$this->TitleSeparator.' ', array_reverse($this->Titles));
         unset($this->Titles);
-        return '<title>'.$Build.'</title>'."\n";
+        return '<title>'.$Build.'</title>'.PHP_EOL;
     }
     private function _BuildHeaders() {
         $Build = '';
@@ -249,7 +251,7 @@ class Theme {
             if($HeaderName == 'late-scripts')
                 continue;
             foreach($HeaderArray as $Header) {
-                $Build .= $Header."\n";
+                $Build .= $Header.PHP_EOL;
             }
             unset($this->Headers[$HeaderName]);
         }
@@ -258,7 +260,7 @@ class Theme {
     private function _BuildLateLoad() {
         $Build = '';
         foreach($this->Headers['late-scripts'] as $LateLoad) {
-            $Build .= $LateLoad."\n";
+            $Build .= $LateLoad.PHP_EOL;
         }
         unset($this->Headers['late-load']);
         return $Build;
@@ -273,7 +275,7 @@ class Theme {
     }
     private function _BuildNavigation() {
         $Build = array('user'=>'', 'main'=>'');
-        $Build = SP_Require(DIR_INCLUDE.'inc.navigation.php');
+        //$Build = require(DIR_INCLUDE.'inc.navigation.php');
         return $Build;
     }
 
@@ -293,7 +295,7 @@ class Theme {
         $BuildArray['stats'] = '';
         $BuildArray['header'] = '<img src="'.HTML_IMAGES.'logo.png" alt="'.SP_WEBAPP_NAME.'">';
 
-        $Build = $this->Render('page', $BuildArray);
+        $Build = $this->Render('page', $BuildArray, true);
         return $Build;
     }
 }

@@ -40,9 +40,8 @@ The SourcePunish WebApp encountered a fatal error trying to display this page.
 <div id="message" class="container">
 <div id="message-title">Error Details</div>
 <div id="message-body">
-'.htmlentities($ErrorArray['msg']).'
+<div class="detail">'.htmlentities($ErrorArray['msg']).'</div>
 </div>
-'.(!is_null($ErrorArray['detail'])?'<div class="detail">'.htmlentities($ErrorArray['detail']).'</div>':'').'
 '.((!is_null($ErrorArray['file']) && !is_null($ErrorArray['line']))?'<div id="message-file-info">The error occurred in file:<br />"'.htmlentities($ErrorArray['file']).'" on line '.htmlentities(number_format($ErrorArray['line'])).'</div>':'').'
 '.((!is_null($ErrorArray['id']) && defined('SP_WEBAPP_URL_ERROR'))?'<div id="message-link">See more information and potential fixes for: <a href="'.htmlentities(sprintf(SP_WEBAPP_URL_ERROR, $ErrorArray['id'])).'" title="See more about this error" target="_blank">'.htmlentities($ErrorArray['id']).'</a></div>':'').'
 </div>

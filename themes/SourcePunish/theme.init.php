@@ -1,22 +1,9 @@
 <?php
-/*--------------------------------------------------------+
-| SourcePunish WebApp                                     |
-| Copyright (C) 2015 https://sourcepunish.net             |
-+---------------------------------------------------------+
-| This program is free software and is released under     |
-| the terms of the GNU Affero General Public License      |
-| version 3 as published by the Free Software Foundation. |
-| You can redistribute it and/or modify it under the      |
-| terms of this license, which is included with this      |
-| software as agpl-3.0.txt or viewable at                 |
-| http://www.gnu.org/licenses/agpl-3.0.html               |
-+--------------------------------------------------------*/
+/*{{BOILER}}*/
 
-if(!defined('SP_LOADED')) die('Access Denied!');
+/*{{CORE_REQUIRED}}*/
 
-$this->Style_Add('theme-base', $this->HTMLPath.'styles.css');
-$this->Script_Add('jquery', 'https://code.jquery.com/jquery-2.1.1.min.js');
-$this->Script_Add('global', HTML_SCRIPTS.'global.js');
-$this->Script_Add('tooltips', HTML_SCRIPTS.'tooltips.js');
+global $Theme;
+$Theme->Style_Add('theme-base', $this->HTMLPath.'styles.css');
 
 ?>

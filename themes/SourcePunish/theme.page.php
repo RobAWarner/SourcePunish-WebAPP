@@ -1,54 +1,43 @@
 <?php
-/*--------------------------------------------------------+
-| SourcePunish WebApp                                     |
-| Copyright (C) 2015 https://sourcepunish.net             |
-+---------------------------------------------------------+
-| This program is free software and is released under     |
-| the terms of the GNU Affero General Public License      |
-| version 3 as published by the Free Software Foundation. |
-| You can redistribute it and/or modify it under the      |
-| terms of this license, which is included with this      |
-| software as agpl-3.0.txt or viewable at                 |
-| http://www.gnu.org/licenses/agpl-3.0.html               |
-+--------------------------------------------------------*/
+/*{{BOILER}}*/
 
-if(!defined('SP_LOADED')) die('Access Denied!');
+/*{{CORE_REQUIRED}}*/
 
 function Theme_Page($Array) {
-    $Build = '<!DOCTYPE html>'."\n";
-    $Build .= '<html lang="en">'."\n";
-    $Build .= '<head>'."\n";
-    $Build .= '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />'."\n";
-    $Build .= '<meta charset="utf-8">'."\n";
+    $Build = '<!DOCTYPE html>'.PHP_EOL;
+    $Build .= '<html lang="en">'.PHP_EOL;
+    $Build .= '<head>'.PHP_EOL;
+    $Build .= '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />'.PHP_EOL;
+    $Build .= '<meta charset="utf-8">'.PHP_EOL;
     $Build .= $Array['headers'];
-    $Build .= '</head>'."\n";
-    $Build .= '<body>'."\n";
-    $Build .= '<div id="wrapper-main">'."\n";
-    $Build .= '<header id="header-main">'."\n";
-    $Build .= '<div id="top-bar">'."\n";
-    $Build .= '<div id="top-bar-stats">'.$Array['stats'].'</div>'."\n";
-    $Build .= '<nav id="nav-user" class="notooltip">'."\n";
+    $Build .= '</head>'.PHP_EOL;
+    $Build .= '<body>'.PHP_EOL;
+    $Build .= '<div id="wrapper-main">'.PHP_EOL;
+    $Build .= '<header id="header-main">'.PHP_EOL;
+    $Build .= '<div id="top-bar">'.PHP_EOL;
+    $Build .= '<div id="top-bar-stats">'.$Array['stats'].'</div>'.PHP_EOL;
+    $Build .= '<nav id="nav-user" class="notooltip">'.PHP_EOL;
     $Build .= $Array['usernav'];
-    $Build .= '</nav>'."\n";
-    $Build .= '</div>'."\n";
-    $Build .= '<div id="logo-main">'."\n";
+    $Build .= '</nav>'.PHP_EOL;
+    $Build .= '</div>'.PHP_EOL;
+    $Build .= '<div id="logo-main">'.PHP_EOL;
     $Build .= $Array['header'];
-    $Build .= '</div>'."\n";
-    $Build .= '<div id="bottom-bar">'."\n";
-    $Build .= '<nav id="nav-main" class="notooltip">'."\n";
+    $Build .= '</div>'.PHP_EOL;
+    $Build .= '<div id="bottom-bar">'.PHP_EOL;
+    $Build .= '<nav id="nav-main" class="notooltip">'.PHP_EOL;
     $Build .= $Array['mainnav'];
-    $Build .= '</nav>'."\n";
-    $Build .= '</div>'."\n";
-    $Build .= '</header>'."\n";
-    $Build .= '<div class="wrapper-content">'."\n";
+    $Build .= '</nav>'.PHP_EOL;
+    $Build .= '</div>'.PHP_EOL;
+    $Build .= '</header>'.PHP_EOL;
+    $Build .= '<div class="wrapper-content">'.PHP_EOL;
     $Build .= $Array['content'];
-    $Build .= '</div>'."\n";
-    $Build .= '<footer id="footer">'."\n";
+    $Build .= '</div>'.PHP_EOL;
+    $Build .= '<footer id="footer">'.PHP_EOL;
     $Build .= $Array['footer'];
-    $Build .= '</footer>'."\n";
-    $Build .= '</div>'."\n";
+    $Build .= '</footer>'.PHP_EOL;
+    $Build .= '</div>'.PHP_EOL;
     $Build .= $Array['late-load'];
-    $Build .= '</body>'."\n";
+    $Build .= '</body>'.PHP_EOL;
     $Build .= '</html>';
     return $Build;
 }
