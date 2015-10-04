@@ -3,7 +3,12 @@
 
 /*{{CORE_REQUIRED}}*/
 
-/* config to show debug backtrace */
+
+/*{{TODO}}*/
+/*
+    - config to show debug backtrace
+    - On error page, show both error file and true (call) file?
+*/
 
 class ErrorHandler extends Exception {
     public function __construct($ErrorMessage, $ErrorRefCode = null, $ShowFileInfo = true, $TrueFile = null, $TrueLine = null) {
@@ -14,14 +19,10 @@ class ErrorHandler extends Exception {
             $ErrorLine = (!is_null($TrueLine)?$TrueLine:$this->line);
 
             /* Remove the system path so that we don't display it */
-            if(defined('DIR_ROOT'))
-                $ErrorFile = preg_replace('#'.DIR_ROOT.'#i', '', $ErrorFile);
+            if(defined('DIR_ROOT') && strlen(DIR_ROOT) > 1)
+                $ErrorFile = preg_replace('#^'.DIR_ROOT.'#i', '', $ErrorFile);
         }
 
-        /* Remove the system path so that we don't display it */
-        if(defined('DIR_ROOT'))
-            $ErrorMessage = preg_replace('#'.DIR_ROOT.'#i', '', $ErrorMessage);
-        
         ErrorDisplay::ShowError($ErrorMessage, $ErrorRefCode, $ErrorFile, $ErrorLine);
 
         parent::__construct($ErrorMessage);
@@ -29,36 +30,30 @@ class ErrorHandler extends Exception {
 }
 
 Class SiteError extends ErrorHandler {
-    public function __construct($ID, $Message = null) {
-        parent::__construct($Message, $ID, true);
-    }
-}
-
-class SQLError extends ErrorHandler {
-    public function __construct($ID, $Message = null, $Code = null) {
-        /* We want a backtrace to work out where the error actually occurred */
+    public function __construct($ID, $Message = null, $BacktraceClass = null, $BacktraceFile = null) {
         $TrueFile = null;
         $TrueLine = null;
 
-        /* debug_backtrace's parameters changes as of 5.3.6 */
-        if(version_compare(PHP_VERSION, '5.3.6') < 0)
-            $BacktraceArray = debug_backtrace(false);
-        else
-            $BacktraceArray = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+        /* Should we search the backtrace for true file? */
+        if(!is_null($BacktraceClass) && !is_null($BacktraceFile)) {
+            /* debug_backtrace's parameters changes as of 5.3.6 */
+            if(version_compare(PHP_VERSION, '5.3.6') < 0)
+                $BacktraceArray = debug_backtrace(false);
+            else
+                $BacktraceArray = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 
-        /* Loop the backtrace to find where the error would have occurred */
-        foreach($BacktraceArray as $Backtrace) {
-            if(isset($Backtrace['class'], $Backtrace['file']) && $Backtrace['class'] === 'SQL' && !preg_match('#class.sql.php$#i', $Backtrace['file'])) {
-                $TrueFile = $Backtrace['file'];
-                $TrueLine = $Backtrace['line'];
-                break;
+            /* Loop the backtrace to find where the error would have occurred */
+            foreach($BacktraceArray as $Backtrace) {
+                if(isset($Backtrace['class'], $Backtrace['file']) && $Backtrace['class'] === $BacktraceClass && !preg_match('#'.$BacktraceFile.'$#i', $Backtrace['file'])) {
+                    $TrueFile = $Backtrace['file'];
+                    $TrueLine = $Backtrace['line'];
+                    break;
+                }
             }
+            unset($BacktraceArray);
         }
-        unset($BacktraceArray);
 
-        $Message = (!empty($Code)?'MySQL Error '.$Code.': ':'').(!empty($Message)?trim($Message):'');
-
-        parent::__construct($Message, $ID, (!is_null($TrueFile)?true:false), $TrueFile, $TrueLine);
+        parent::__construct($Message, $ID, true, $TrueFile, $TrueLine);
     }
 }
 
@@ -68,9 +63,13 @@ class PHPError extends ErrorHandler {
         if($PHPErrorRef === false)
             $PHPErrorRef = 'php.other';
 
+        /* Remove the system path so that we don't display it */
+        if(defined('DIR_ROOT') && strlen(DIR_ROOT) > 1)
+            $ErrorString = preg_replace('#'.DIR_ROOT.'#i', '', $ErrorString);
+
         parent::__construct($ErrorString, $PHPErrorRef, true, $ErrorFile, $ErrorLine);
     }
-    
+
     private static function GetPHPErrorRef($ErrorLevel) {
        $ID = false;
        switch($ErrorLevel) {
@@ -88,10 +87,6 @@ class PHPError extends ErrorHandler {
                 break;
             case E_PARSE:
                 $ID = 'php.parse';
-                break;
-            case E_NOTICE:
-            case E_USER_NOTICE:
-                $ID = 'php.parse'; 
                 break;
         }
         return $ID;

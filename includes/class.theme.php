@@ -169,7 +169,7 @@ class Theme {
         else
             return false;
     }
-    
+
     /* Theming functions */
     private $TitleSeparator = '|';
     private $Titles = array();
@@ -199,7 +199,7 @@ class Theme {
         if(isset($this->Headers['style-blocks'][$ID]))
             unset($this->Headers['style-blocks'][$ID]);
     }
-    
+
     /* Scripts */
     public function Script_Add($ID, $URL, $LateLoad = true, $If = '') {
         $URL = trim(str_replace('"', '', $URL));
@@ -215,7 +215,7 @@ class Theme {
         if(isset($this->Headers['scripts'][$ID]))
             unset($this->Headers['scripts'][$ID]);
         if(isset($this->Headers['late-scripts'][$ID]))
-            unset($this->Headers['late-scripts'][$ID]); 
+            unset($this->Headers['late-scripts'][$ID]);
     }
 
     /* Other Headers */
@@ -234,12 +234,12 @@ class Theme {
         else
             array_push($this->Content, $Content);
     }
-    
+
     /* Render */
     public function RenderPage() {
         echo $this->_BuildPage();
     }
-    
+
     private function _BuildTitle() {
         $Build = implode(' '.$this->TitleSeparator.' ', array_reverse($this->Titles));
         unset($this->Titles);
@@ -275,7 +275,7 @@ class Theme {
     }
     private function _BuildNavigation() {
         $Build = array('user'=>'', 'main'=>'');
-        //$Build = require(DIR_INCLUDE.'inc.navigation.php');
+        $Build = require(DIR_INCLUDE.'inc.navigation.php');
         return $Build;
     }
 
@@ -287,7 +287,7 @@ class Theme {
         $BuildArray['content'] = $this->_BuildContent();
 
         $BuildArray['footer'] = 'Powered by <a title="Visit '.SP_WEBAPP_URL.'" href="'.SP_WEBAPP_URL.'">'.SP_WEBAPP_NAME.' '.SP_WEBAPP_VERSION.'</a>';
-        
+
         $Navs = $this->_BuildNavigation();
         $BuildArray['usernav'] = $Navs['user'];
         $BuildArray['mainnav'] = $Navs['main'];
